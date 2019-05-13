@@ -63,7 +63,8 @@ namespace uncertainties {
         
         // id == 0 -> sdev == 0, sigma.size() == 0
         // id > 0 -> sigma.size() == 0
-        // id < 0 -> sigma.size() >= 0, sdev completely ignored
+        // id < 0, sdev < 0 -> sigma.size() >= 0, sdev completely ignored
+        // id < 0, sdev >= 0 -> sigma.size() >= 0, sdev * sdev == s2()
         internal::Id id;
         Real sdev;
         Real mu;
@@ -103,11 +104,22 @@ namespace uncertainties {
         Real s() const {
             if (this->id >= 0) {
                 return std::abs(this->sdev);
+            } else if (this->sdev >= 0) {
+                return this->sdev;
             } else {
                 return std::sqrt(this->s2());
             }
         }
                 
+        Real s() {
+            if (this->id >= 0) {
+                return std::abs(this->sdev);
+            } else if (this->sdev < 0) {
+                this->sdev = std::sqrt(this->s2());
+            }
+            return this->sdev;
+        }
+
         operator std::string() {
             return std::to_string(n()) + "+/-" + std::to_string(s());
         }
@@ -178,13 +190,22 @@ namespace uncertainties {
         }
         
         friend Real var(const Type &x) {
-            if (x.id >= 0) {
+            if (x.id >= 0 or x.sdev >= 0) {
                 return x.sdev * x.sdev;
             } else {
                 return x.s2();
             }
         }
         
+        friend Real var(Type &x) {
+            if (x.id >= 0) {
+                return x.sdev * x.sdev;
+            } else if (x.sdev < 0) {
+                x.sdev = std::sqrt(x.s2());
+            }
+            return x.sdev * x.sdev;
+        }
+
         friend Real corr(const Type &x, const Type &y) {
             return cov(x, y) / (x.s() * y.s());
         }
@@ -200,6 +221,7 @@ namespace uncertainties {
                 for (auto &it : y.sigma) {
                     it.second *= dx;
                 }
+                y.sdev = -1;
             }
             return y;
         }
@@ -224,6 +246,7 @@ namespace uncertainties {
                     z.sigma[it.first] += dy * it.second;
                 }
             }
+            z.sdev = -1;
             return z;
         }
         
@@ -243,6 +266,7 @@ namespace uncertainties {
                     }
                 }
             }
+            z.sdev = -1;
             return z;
         }
                 
@@ -271,6 +295,7 @@ namespace uncertainties {
                         this->sigma[it.first] += dx * it.second;
                     }
                 }
+                this->sdev = -1;
             }
             this->mu = std::move(mu); // keep this last in case &x == this
             return *this;

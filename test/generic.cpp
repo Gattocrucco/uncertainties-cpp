@@ -25,21 +25,12 @@ void print_matrix(Vector m) {
     }
 }
 
-double sin2(double x) {
-    return std::sin(x) * std::sin(x);
-}
-
-double dsin2(double x) {
-    return 2 * std::sin(x) * std::cos(x);
-}
-
 int main() {
     udouble x(1, 1);
     udouble y {1, 1};
     std::cout << "x - x = " << (x - x).format() << "\n";
     std::cout << "x + x = " << (x + x).format() << "\n";
     std::cout << "x - y = " << (x - y).format() << "\n";
-    std::cout << "sin(x) = " << sin(x).format() << "\n";
     std::cout << "sizeof(udouble) = " << sizeof(udouble) << "\n";
     std::cout << "sizeof(ufloat) = " << sizeof(ufloat) << "\n";
     std::cout << "ufloat(x) = " << ufloat(x).format() << "\n";
@@ -63,8 +54,4 @@ int main() {
     unc::cov_matrix(v.begin(), v.end(), cov.begin());
     std::cout << "cov_matrix({x, 2 * x, y, x + y}) = \n";
     print_matrix(cov);
-    auto usin2 = unc::uunary<double>(sin2, dsin2);
-    auto usin2num = unc::uunary<double>(sin2);
-    std::cout << "sin2(y) = " << usin2(y).format(15) << "\n";
-    std::cout << "sin2(y) (auto deriv) = " << usin2num(y).format(15) << "\n";
 }

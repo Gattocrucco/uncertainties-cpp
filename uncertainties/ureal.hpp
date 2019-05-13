@@ -63,13 +63,13 @@ namespace uncertainties {
         
         // id == 0 -> sdev == 0, sigma.size() == 0
         // id > 0 -> sigma.size() == 0
-        // id < 0 -> sigma.size() >= 0, sdev * sdev == this->s2()
+        // id < 0 -> sigma.size() >= 0, sdev completely ignored
         internal::Id id;
         Real sdev;
         Real mu;
         std::map<internal::Id, Real> sigma;
         
-        Real s2() {
+        Real s2() const {
             Real s2(0);
             for (const auto &it : this->sigma) {
                 const Real &s = it.second;
@@ -101,7 +101,11 @@ namespace uncertainties {
         }
         
         Real s() const {
-            return std::abs(this->sdev);
+            if (this->id >= 0) {
+                return std::abs(this->sdev);
+            } else {
+                return std::sqrt(this->s2());
+            }
         }
                 
         operator std::string() {
@@ -174,7 +178,11 @@ namespace uncertainties {
         }
         
         friend Real var(const Type &x) {
-            return x.sdev * x.sdev;
+            if (x.id >= 0) {
+                return x.sdev * x.sdev;
+            } else {
+                return x.s2();
+            }
         }
         
         friend Real corr(const Type &x, const Type &y) {
@@ -192,7 +200,6 @@ namespace uncertainties {
                 for (auto &it : y.sigma) {
                     it.second *= dx;
                 }
-                y.sdev = std::sqrt(y.s2());
             }
             return y;
         }
@@ -217,7 +224,6 @@ namespace uncertainties {
                     z.sigma[it.first] += dy * it.second;
                 }
             }
-            z.sdev = std::sqrt(z.s2());
             return z;
         }
         
@@ -237,7 +243,6 @@ namespace uncertainties {
                     }
                 }
             }
-            z.sdev = std::sqrt(z->s2());
             return z;
         }
                 
@@ -266,7 +271,6 @@ namespace uncertainties {
                         this->sigma[it.first] += dx * it.second;
                     }
                 }
-                this->sdev = std::sqrt(this->s2());
             }
             this->mu = std::move(mu); // keep this last in case &x == this
             return *this;

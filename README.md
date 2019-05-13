@@ -2,7 +2,8 @@
 
 C++ header library for first-order uncertainty propagation. More or less a port
 of the python package [uncertainties](https://github.com/lebigot/uncertainties)
-(but see also [gvar](https://github.com/gplepage/gvar)).
+(but see also [gvar](https://github.com/gplepage/gvar) and
+[measurements.jl](https://github.com/JuliaPhysics/Measurements.jl)).
 
 ## Installation
 

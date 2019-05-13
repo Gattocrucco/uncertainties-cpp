@@ -2,7 +2,7 @@ CPP = c++
 CFLAGS = -std=c++11 -g -I..
 LDFLAGS = -lc++
 
-tests = generic urealhpp iohpp stathpp  mathhpp format urealshpp ureals
+tests = generic urealhpp iohpp stathpp  mathhpp format urealshpp ureals vector_speed
 
 objects = $(patsubst %,%.cpp.o,$(tests))
 run_tests = $(patsubst %,run_%,$(tests))
@@ -20,3 +20,4 @@ uncertainties.cpp.o: uncertainties.cpp ../uncertainties/*.hpp
 $(objects): %.cpp.o: %.cpp ../uncertainties/*.hpp
 	$(CPP) $(CFLAGS) -c -o $@ $<
 urealshpp.cpp.o ureals.cpp.o: CFLAGS += -I/usr/local/include/eigen3
+vector_speed.cpp.o: CFLAGS += -O2

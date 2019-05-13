@@ -2,7 +2,7 @@
 #define UNCERTAINTIES_IO_HPP_6DDCDE20
 
 /*! \file
-\brief Defines stream operations on `UReal`s.
+\brief Defines string conversion and stream operations on `UReal`s.
 */
 
 #include <ostream>

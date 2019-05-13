@@ -1,6 +1,11 @@
 #ifndef UNCERTAINTIES_UREALS_HPP_61EB1909
 #define UNCERTAINTIES_UREALS_HPP_61EB1909
 
+/*! \file
+\brief Defines function `ureals` to generate a list of variables with given
+covariance matrix.
+*/
+
 #include <cstddef>
 #include <stdexcept>
 #include <cmath>

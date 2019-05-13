@@ -29,7 +29,7 @@ int main() {
     unc::udouble x(2, 1), y(2, 1);
     unc::udouble a = x - x;
     unc::udouble b = x - y;
-    std::cout << a.format() << ", " << b.format() << "\n";
+    std::cout << a << ", " << b << "\n";
 }
 ~~~
 */

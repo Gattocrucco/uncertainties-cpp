@@ -1,6 +1,10 @@
 #ifndef UNCERTAINTIES_CORE_HPP_D4C14D73
 #define UNCERTAINTIES_CORE_HPP_D4C14D73
 
+/*! \file
+\brief Basic declarations and definitions; do not use this header directly.
+*/
+
 #include <string>
 
 namespace uncertainties {

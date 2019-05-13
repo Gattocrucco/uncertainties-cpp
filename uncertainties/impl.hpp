@@ -31,7 +31,7 @@
 
 namespace uncertainties {
     namespace internal {
-        Id next_id {};
+        Id last_id {};
 
         void insert_dot(std::string *s, int n, int e) {
             e += s->size() - n;

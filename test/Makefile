@@ -2,7 +2,7 @@ CPP = c++
 CFLAGS = -std=c++11 -g -I..
 LDFLAGS = -lc++
 
-tests = urealhpp iohpp stathpp  mathhpp urealshpp functionshpp generic format ureals math
+tests = urealhpp iohpp stathpp  mathhpp urealshpp functionshpp generic format ureals math mpfr
 benchmarks = fillvector accumulate smallureals
 
 programs = $(tests) $(benchmarks)
@@ -28,3 +28,4 @@ $(objects): %.cpp.o: %.cpp ../uncertainties/*.hpp
 	$(CPP) $(CFLAGS) -c -o $@ $<
 urealshpp.cpp.o ureals.cpp.o smallureals.cpp.o: CFLAGS += -I/usr/local/include/eigen3
 $(benchmark_objects): CFLAGS += -O2
+mpfr: LDFLAGS += -lmpfr # -lboost_system

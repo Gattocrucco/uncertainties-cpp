@@ -30,7 +30,7 @@ namespace uncertainties {
     namespace internal {
         using Id = int;
     
-        extern Id next_id;
+        extern Id last_id;
     }
     
     template<typename Real>

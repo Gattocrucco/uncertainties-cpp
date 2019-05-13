@@ -61,6 +61,11 @@ namespace uncertainties {
     private:
         using Type = UReal<Real>;
         
+        // id == 0 -> sdev == 0, sigma.size() == 0
+        // id > 0 -> sigma.size() == 0
+        // id < 0 -> sigma.size() >= 0, sdev completely ignored
+        internal::Id id;
+        Real sdev;
         Real mu;
         std::map<internal::Id, Real> sigma;
         
@@ -77,11 +82,10 @@ namespace uncertainties {
         using real_type = Real;
         
         UReal(const Real n, const Real s):
-        mu {std::move(n)}, sigma {{internal::next_id, std::move(s)}} {
-            if (s < 0) {
+        mu {std::move(n)}, sdev {std::move(s)}, id {++internal::last_id} {
+            if (this->sdev < 0) {
                 throw std::invalid_argument("uncertainties::UReal::UReal: s < 0");
             }
-            ++internal::next_id;
         }
         
         UReal(const Real n): mu {std::move(n)} {
@@ -97,7 +101,11 @@ namespace uncertainties {
         }
         
         Real s() const {
-            return std::sqrt(this->s2());
+            if (this->id >= 0) {
+                return std::abs(this->sdev);
+            } else {
+                return std::sqrt(this->s2());
+            }
         }
                 
         operator std::string() {
@@ -110,9 +118,8 @@ namespace uncertainties {
         }
         
         friend Type copy_unc(const Real n, const Type &x) {
-            Type y;
+            Type y = x;
             y.mu = std::move(n);
-            y.sigma = x.sigma;
             return y;
         }
         
@@ -122,6 +129,8 @@ namespace uncertainties {
         template<typename OtherReal>
         operator UReal<OtherReal>() {
             UReal<OtherReal> x;
+            x.id = this->id;
+            x.sdev = this->sdev;
             x.mu = this->mu;
             for (const auto &it : this->sigma) {
                 x.sigma[it.first] = it.second;
@@ -131,38 +140,66 @@ namespace uncertainties {
         
         friend Real cov(const Type &x, const Type &y) {
             Real cov(0);
-            const Type *min_size, *max_size;
-            if (x.sigma.size() > y.sigma.size()) {
-                min_size = &y;
-                max_size = &x;
-            } else {
-                min_size = &x;
-                max_size = &y;
-            }
-            const auto end = max_size->sigma.end();
-            for (const auto &it : min_size->sigma) {
-                const auto IT = max_size->sigma.find(it.first);
-                if (IT != end) {
-                    cov += it.second * IT->second;
+            if (x.id > 0 && y.id > 0) {
+                if (x.id == y.id) {
+                    cov += x.sdev * y.sdev;
+                }
+            } else if (x.id < 0 or y.id < 0) {
+                const Type *min_size, *max_size;
+                if (x.sigma.size() > y.sigma.size()) {
+                    min_size = &y;
+                    max_size = &x;
+                } else {
+                    min_size = &x;
+                    max_size = &y;
+                }
+                const auto END = max_size->sigma.end();
+                if (min_size->id > 0) {
+                    const auto IT = max_size->sigma.find(min_size->id);
+                    if (IT != END) {
+                        cov += min_size->sdev * IT->second;
+                    }
+                } else if (min_size->id < 0) {
+                    for (const auto &it : min_size->sigma) {
+                        if (max_size->id > 0) {
+                            if (it.first == max_size->id) {
+                                cov += it.second * max_size->sdev;
+                            }
+                        } else if (max_size->id < 0) {
+                            const auto IT = max_size->sigma.find(it.first);
+                            if (IT != END) {
+                                cov += it.second * IT->second;
+                            }
+                        }
+                    }
                 }
             }
             return cov;
         }
         
         friend Real var(const Type &x) {
-            return x.s2();
+            if (x.id >= 0) {
+                return x.sdev * x.sdev;
+            } else {
+                return x.s2();
+            }
         }
         
         friend Real corr(const Type &x, const Type &y) {
-            return cov(x, y) / std::sqrt(var(x) * var(y));
+            return cov(x, y) / (x.s() * y.s());
         }
         
         friend Type unary(const Type &x, const Real mu, const Real &dx) {
             Type y;
+            y.id = x.id;
             y.mu = std::move(mu);
-            y.sigma = x.sigma;
-            for (auto &it : y.sigma) {
-                it.second *= dx;
+            if (x.id > 0) {
+                y.sdev = x.sdev * dx;
+            } else if (x.id < 0) {
+                y.sigma = x.sigma;
+                for (auto &it : y.sigma) {
+                    it.second *= dx;
+                }
             }
             return y;
         }
@@ -171,12 +208,21 @@ namespace uncertainties {
                            const Real mu,
                            const Real &dx, const Real &dy) {
             Type z;
+            z.id = -1;
             z.mu = std::move(mu);
-            for (const auto &it : x.sigma) {
-                z.sigma[it.first] = dx * it.second;
+            if (x.id > 0) {
+                z.sigma[x.id] = dx * x.sdev;
+            } else if (x.id < 0) {
+                for (const auto &it : x.sigma) {
+                    z.sigma[it.first] = dx * it.second;
+                }
             }
-            for (const auto &it : y.sigma) {
-                z.sigma[it.first] += dy * it.second;
+            if (y.id > 0) {
+                z.sigma[y.id] += dy * y.sdev;
+            } else if (y.id < 0) {
+                for (const auto &it : y.sigma) {
+                    z.sigma[it.first] += dy * it.second;
+                }
             }
             return z;
         }
@@ -184,12 +230,17 @@ namespace uncertainties {
         template<typename XIt, typename DxIt>
         friend Type nary(XIt xbegin, XIt xend, const Real mu, DxIt dxbegin) {
             Type z;
+            z.id = -1;
             z.mu = std::move(mu);
             for (; xbegin != xend; ++xbegin, ++dxbegin) {
                 const Type &x = *xbegin;
                 const Real &dx = *dxbegin;
-                for (const auto &it: x.sigma) {
-                    z.sigma[it.first] += dx * it.second;
+                if (x.id > 0) {
+                    z.sigma[x.id] += dx * x.sdev;
+                } else if (x.id < 0) {
+                    for (const auto &it : x.sigma) {
+                        z.sigma[it.first] += dx * it.second;
+                    }
                 }
             }
             return z;
@@ -202,14 +253,23 @@ namespace uncertainties {
                 for (auto &it : this->sigma) {
                     it.second *= d;
                 }
+                this->sdev *= d;
             } else {
+                if (this->id > 0) {
+                    this->sigma[this->id] = this->sdev;
+                }
+                this->id = -1;
                 if (dt != 1) {
                     for (auto &it : this->sigma) {
                         it.second *= dt;
                     }
                 }
-                for (const auto &it : x.sigma) {
-                    this->sigma[it.first] += dx * it.second;
+                if (x.id > 0) {
+                    this->sigma[x.id] += dx * x.sdev;
+                } else if (x.id < 0) {
+                    for (const auto &it : x.sigma) {
+                        this->sigma[it.first] += dx * it.second;
+                    }
                 }
             }
             this->mu = std::move(mu); // keep this last in case &x == this

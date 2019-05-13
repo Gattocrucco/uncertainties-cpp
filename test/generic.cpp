@@ -41,6 +41,7 @@ int main() {
     std::cout << "x - y = " << (x - y).format() << "\n";
     std::cout << "sin(x) = " << sin(x).format() << "\n";
     std::cout << "sizeof(udouble) = " << sizeof(udouble) << "\n";
+    std::cout << "sizeof(ufloat) = " << sizeof(ufloat) << "\n";
     std::cout << "ufloat(x) = " << ufloat(x).format() << "\n";
     std::cout << "x - ufloat(x) = " << (x - udouble(ufloat(x))).format() << "\n";
     std::cout << "cov(x, x) = " << cov(x, x) << "\n";

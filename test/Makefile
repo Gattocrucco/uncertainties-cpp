@@ -3,7 +3,7 @@ CFLAGS = -std=c++11 -g -I..
 LDFLAGS = -lc++
 
 tests = generic urealhpp iohpp stathpp  mathhpp format urealshpp ureals
-benchmarks = vector_speed accumulate
+benchmarks = fillvector accumulate
 
 programs = $(tests) $(benchmarks)
 
@@ -15,7 +15,7 @@ run_benchmarks = $(patsubst %,run_%,$(benchmarks))
 .PHONY: all test benchmark $(run_tests) $(run_benchmarks)
 all : test benchmark
 test: $(run_tests)
-benchmark: $(run_benchmarks)
+benchmark: $(benchmarks) $(run_benchmarks)
 
 $(run_tests) $(run_benchmarks): run_%: %
 	$<

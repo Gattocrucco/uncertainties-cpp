@@ -44,13 +44,13 @@ namespace uncertainties {
     template<typename Real>
     UReal<Real> fmax(const UReal<Real> &x, const UReal<Real> &y) {
         const Real max = std::fmax(x.n(), y.n());
-        const bool c = max == x;
+        const bool c = max == x.n();
         return binary(x, y, max, c ? 1 : 0, c ? 0 : 1);
     }
     template<typename Real>
     UReal<Real> fmin(const UReal<Real> &x, const UReal<Real> &y) {
         const Real min = std::fmin(x.n(), y.n());
-        const bool c = min == x;
+        const bool c = min == x.n();
         return binary(x, y, min, c ? 1 : 0, c ? 0 : 1);
     }
     // fdim?
@@ -60,7 +60,7 @@ namespace uncertainties {
     }
     template<typename Real>
     UReal<Real> exp2(const UReal<Real> &x) {
-        return unary(x, std::exp2(x.n()), std::log(Real(2)) * std::exp(x.n())); 
+        return unary(x, std::exp2(x.n()), std::log(Real(2)) * std::exp2(x.n()));
     }
     template<typename Real>
     UReal<Real> expm1(const UReal<Real> &x) {
@@ -128,7 +128,7 @@ namespace uncertainties {
     template<typename Real>
     UReal<Real> atan2(const UReal<Real> &x, const UReal<Real> &y) {
         const Real yx = y.n() / x.n();
-        const Real dy = Real(1) / ((Real(1) + yx * yx) * x);
+        const Real dy = Real(1) / ((Real(1) + yx * yx) * x.n());
         const Real dx = dy * (-yx);
         return binary(x, y, std::atan2(x.n(), y.n()), dx, dy);
     }
@@ -169,11 +169,11 @@ namespace uncertainties {
     }
     template<typename Real>
     bool isfinite(const UReal<Real> &x) {
-        return std::isfinite(x.n()) and std::isfinite(x.s2());
+        return std::isfinite(x.n()) and std::isfinite(x.s());
     }
     template<typename Real>
     bool isnormal(const UReal<Real> &x) {
-        return std::isnormal(x.n()) and std::isnormal(x.s2());
+        return std::isnormal(x.n()) and std::isnormal(x.s());
     }
 }
 

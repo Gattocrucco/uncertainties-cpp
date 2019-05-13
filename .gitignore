@@ -1,0 +1,13 @@
+# files without extension
+*
+!*.*
+!Makefile
+!Doxyfile
+!uncertainties
+!test
+
+# macOS
+.DS_Store
+
+# object files
+*.o

@@ -26,8 +26,6 @@
 
 #include <map>
 #include <string>
-#include <functional>
-#include <limits>
 #include <stdexcept>
 #include <cmath>
 #include <utility>
@@ -97,11 +95,11 @@ namespace uncertainties {
             ;
         }
         
-        bool isindep() const {
+        bool isindep() const noexcept {
             return this->id >= 0;
         }
         
-        Id indepid() const {
+        Id indepid() const noexcept {
             return this->id;
         }
         
@@ -309,8 +307,8 @@ namespace uncertainties {
             return *this;
         }
 
-        friend Type operator+(const Type &x) {
-            return unary(x, x.mu, 1);
+        friend inline const Type &operator+(const Type &x) noexcept {
+            return x;
         }
         friend Type operator-(const Type &x) {
             return unary(x, -x.mu, -1);
@@ -358,66 +356,7 @@ namespace uncertainties {
     inline Real sdev(const UReal<Real> &x) {
         return x.s();
     }
-    
-    template<typename Real>
-    std::function<UReal<Real>(const UReal<Real> &)>
-    uunary(const std::function<const Real &(const Real &)> &f,
-           const std::function<const Real &(const Real &)> &df) {
-        return [f, df](const UReal<Real> &x) {
-            return unary(x, f(x.n()), df(x.n()));
-        };
-    }
-    
-    template<typename Real>
-    std::function<UReal<Real>(const UReal<Real> &, const UReal<Real> &)>
-    ubinary(const std::function<Real(const Real &, const Real &)> &f,
-            const std::function<Real(const Real &, const Real &)> &dfdx,
-            const std::function<Real(const Real &, const Real &)> &dfdy) {
-        return [f, dfdx, dfdy](const UReal<Real> &x, const UReal<Real> &y) {
-            const Real &xn = x.n();
-            const Real &yn = y.n();
-            return binary(x, y, f(xn, yn), dfdx(xn, yn), dfdy(xn, yn));
-        };
-    }
-    
-    namespace internal {
-        template<typename Real>
-        constexpr Real default_step() {
-            return (1 << (std::numeric_limits<Real>::digits / 2))
-                   * std::numeric_limits<Real>::epsilon();
-        };
-    }
-    
-    template<typename Real>
-    std::function<UReal<Real>(const UReal<Real> &)>
-    uunary(const std::function<Real(const Real &)> &f,
-           const Real &astep=internal::default_step<Real>(),
-           const Real &rstep=internal::default_step<Real>()) {
-        return [f, rstep, astep](const UReal<Real> &x) {
-            const Real &mu = x.n();
-            const Real fmu = f(mu);
-            const Real step = std::abs(fmu) * rstep + astep;
-            const Real dx = (f(mu + step) - fmu) / step;
-            return unary(x, fmu, dx);
-        };
-    }
-    
-    template<typename Real>
-    std::function<UReal<Real>(const UReal<Real> &, const UReal<Real> &)>
-    ubinary(const std::function<Real(const Real &, const Real &)> &f,
-            const Real &astep=internal::default_step<Real>(),
-            const Real &rstep=internal::default_step<Real>()) {
-        return [f, rstep, astep](const UReal<Real> &x, const UReal<Real> &y) {
-            const Real &xn = x.n();
-            const Real &yn = y.n();
-            const Real fn = f(xn, yn);
-            const Real step = std::abs(fn) * rstep + astep;
-            const Real dfdx = (f(xn + step, yn) - fn) / step;
-            const Real dfdy = (f(xn, yn + step) - fn) / step;
-            return binary(x, y, fn, dfdx, dfdy);
-        };
-    }
-    
+        
     using udouble = UReal<double>;
     using ufloat = UReal<float>;
 }

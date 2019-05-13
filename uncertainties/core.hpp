@@ -48,7 +48,7 @@ namespace uncertainties {
     }
     
     template<typename Number>
-    inline Number sdev(const Number &x) {
+    inline Number sdev(const Number &x) noexcept {
         return 0;
     }
     

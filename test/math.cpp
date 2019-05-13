@@ -4,6 +4,7 @@
 
 #include <uncertainties/ureal.hpp>
 #include <uncertainties/math.hpp>
+#include <uncertainties/functions.hpp>
 
 bool close(double x, double y, double atol=1e-6, double rtol=1e-6) {
     return std::abs(x - y) < std::abs(x + y) * rtol + atol;

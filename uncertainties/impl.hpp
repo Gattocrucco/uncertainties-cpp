@@ -26,12 +26,13 @@
 
 #include <string>
 #include <cstdlib>
+#include <atomic>
 
 #include "core.hpp"
 
 namespace uncertainties {
     namespace internal {
-        Id last_id {};
+        std::atomic<Id> last_id {};
 
         void insert_dot(std::string *s, int n, int e) {
             e += s->size() - n;

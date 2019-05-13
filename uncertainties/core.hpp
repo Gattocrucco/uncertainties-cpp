@@ -25,12 +25,13 @@
 */
 
 #include <string>
+#include <atomic>
 
 namespace uncertainties {
     namespace internal {
         using Id = int;
     
-        extern Id last_id;
+        extern std::atomic<Id> last_id;
     }
     
     template<typename Real>

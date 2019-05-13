@@ -28,11 +28,11 @@
 #include <atomic>
 
 namespace uncertainties {
+    using Id = int; // must be signed
     namespace internal {
-        using Id = int;
-    
         extern std::atomic<Id> last_id;
     }
+    constexpr Id invalid_id = -1; // must be < 0
     
     template<typename Real>
     class UReal;

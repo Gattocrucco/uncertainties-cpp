@@ -65,10 +65,10 @@ namespace uncertainties {
         // id > 0 -> sigma.size() == 0
         // id < 0, sdev < 0 -> sigma.size() >= 0, sdev completely ignored
         // id < 0, sdev >= 0 -> sigma.size() >= 0, sdev * sdev == s2()
-        internal::Id id;
+        Id id;
         Real sdev;
         Real mu;
-        std::map<internal::Id, Real> sigma;
+        std::map<Id, Real> sigma;
         
         Real s2() const {
             Real s2(0);
@@ -95,6 +95,14 @@ namespace uncertainties {
         
         UReal() {
             ;
+        }
+        
+        bool isindep() const {
+            return this->id >= 0;
+        }
+        
+        Id indepid() const {
+            return this->id;
         }
         
         const Real &n() const noexcept {
@@ -230,7 +238,7 @@ namespace uncertainties {
                            const Real mu,
                            const Real &dx, const Real &dy) {
             Type z;
-            z.id = -1;
+            z.id = invalid_id;
             z.mu = std::move(mu);
             if (x.id > 0) {
                 z.sigma[x.id] = dx * x.sdev;
@@ -253,7 +261,7 @@ namespace uncertainties {
         template<typename XIt, typename DxIt>
         friend Type nary(XIt xbegin, XIt xend, const Real mu, DxIt dxbegin) {
             Type z;
-            z.id = -1;
+            z.id = invalid_id;
             z.mu = std::move(mu);
             for (; xbegin != xend; ++xbegin, ++dxbegin) {
                 const Type &x = *xbegin;
@@ -282,7 +290,7 @@ namespace uncertainties {
                 if (this->id > 0) {
                     this->sigma[this->id] = this->sdev;
                 }
-                this->id = -1;
+                this->id = invalid_id;
                 if (dt != 1) {
                     for (auto &it : this->sigma) {
                         it.second *= dt;

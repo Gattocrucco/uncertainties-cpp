@@ -32,7 +32,7 @@
 
 namespace uncertainties {
     namespace internal {
-        std::atomic<Id> last_id {};
+        std::atomic<Id> last_id {0}; // must be >= 0
 
         void insert_dot(std::string *s, int n, int e) {
             e += s->size() - n;

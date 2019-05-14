@@ -79,10 +79,11 @@ namespace uncertainties {
             if (v < 0) {
                 throw std::invalid_argument(
                     "uncertainties::ureals: covariance matrix has "
-                    "negative eigenvalue " + std::to_string(v)
+                    "negative eigenvalues"
                 );
             }
-            x.push_back(UType(0, std::sqrt(v)));
+            using std::sqrt;
+            x.push_back(UType(0, sqrt(v)));
         }
         OutVector out;
         for (std::size_t i = 0; i < n; ++i) {

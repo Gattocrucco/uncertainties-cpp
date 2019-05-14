@@ -33,26 +33,175 @@
 #include "core.hpp"
 
 /*!
-\brief C++ header library for first-order uncertainty propagation.
-
-Basic example:
-~~~{.cpp}
-#include <iostream>
-#include <uncertainties/ureal.hpp>
-#include <uncertainties/io.hpp>
-#include <uncertainties/impl.hpp>
-namespace unc = uncertainties;
-int main() {
-    unc::udouble x(2, 1), y(2, 1);
-    unc::udouble a = x - x;
-    unc::udouble b = x - y;
-    std::cout << a << ", " << b << "\n";
-}
-~~~
+\brief Namespace for all the definitions of the library.
 */
 namespace uncertainties {
     /*!
     \brief Represents a number with associated uncertainty.
+    
+    Basics
+    ======
+    
+    An `UReal` represents a statistical variable of which the first two moments
+    of the probability distribution are known: the mean and the variance. When
+    doing a computation, the mean and variance of the result can be computed to
+    first order using only the mean and variance of the operands. First order
+    means approximating the function as linear.
+    
+    The template parameter `Real`, which is aliased to the member type
+    `real_type`, is the numerical type used. Two aliases are provided for
+    convenience:
+    
+    ~~~cpp
+    // (in namespace uncertainties)
+    using udouble = UReal<double>;
+    using ufloat = UReal<float>;
+    ~~~
+    
+    Initialization
+    --------------
+    
+    An `UReal` can be constructed with 0, 1 or 2 numbers with intuitive
+    semantics:
+    
+    ~~~cpp
+    namespace unc = uncertainties;
+    unc::udouble x; // mean = 0, standard deviation = 0
+    unc::udouble x = 1; // mean = 1, standard deviation = 0
+    unc::udouble y = {1, 2}; // mean = 1, standard deviation = 2
+    ~~~
+    
+    When doing operations with regular numbers, the non-`UReal` operands are
+    treated as having null variance.
+    
+    Accessing the moments
+    ---------------------
+    
+    The mean and standard deviation (square root of the variance) of an `UReal`
+    can be accessed with member functions or external functions, while the
+    variance is a friend function:
+    
+    ~~~cpp
+    unc::udouble x;
+    double mean = x.n();
+    double std = x.s();
+    mean = unc::nom(x);
+    std = unc::sdev(x);
+    double v = var(x); // = std * std
+    ~~~
+    
+    The covariance and correlation can be computed with friend functions:
+    
+    ~~~cpp
+    unc::udouble x(1, 0.3);
+    unc::udouble y(2, 0.4);
+    double c = cov(x, x); // = var(x) = 0.09
+    c = cov(x, y); // 0
+    c = cov(x, y + x); // 0.09
+    c = cov(x, y - x); // -0.09
+    c = corr(x, x + y); // = cov(x,x+y)/(sdev(x)*sdev(x+y)) = 0.6
+    ~~~
+    
+    Printing
+    --------
+    
+    An `UReal` can be formatted to string and output to a stream. You have to
+    include the header `io.hpp`.
+    
+    ~~~cpp
+    #include <uncertainties/io.hpp>
+    ...
+    unc::udouble x = {13, 0.4};
+    std::cout << x << "\n"; // will print "13.0 ± 0.4"
+    std::cout << x.format(3) << "\n"; // "13.000 ± 0.400"
+    std::cout << format(x, 3) << "\n"; // the same
+    ~~~
+    
+    See the function `format` in `io.hpp` for details.
+    
+    Dependent vs independent variables
+    ----------------------------------
+    
+    When a `UReal` is initialized with mean and standard deviation, it is an
+    _independent variable_. Conversely, values obtained through operations on
+    `UReal`s are _dependent variables_. Dependent variables store internally
+    information on all the independent variables that entered the computation.
+    The (in)dependency of a variable can be tested with the member function
+    `isindep`:
+    
+    ~~~cpp
+    unc::udouble x = {1, 0.1};
+    bool ind = x.isindep(); // true
+    unc::udouble y = x + x;
+    ind = y.isindep(); // false
+    ~~~
+    
+    A value uniquely identifying an independent variable can be obtained with
+    `indepid`:
+    
+    ~~~cpp
+    unc::Id id = x.indepid(); // some value
+    id = y.indepid(); // returns unc::invalid_id
+    ~~~
+    
+    Note that a variable that is formally dependent but really independent
+    may be generated:
+    
+    ~~~cpp
+    unc::udouble z = x - x; // 0 +/- 0, exactly zero
+    id = z.isindep(); // false
+    ~~~
+    
+    Implementing functions
+    ======================
+    
+    The header `math.hpp` defines standard mathematical functions on `UReal`s.
+    Other functions can be easily added with the utilities in `functions.hpp`.
+    
+    If that is not sufficient, you can use directly the friend functions
+    `unary`, `binary`, `nary` and the member function `binary_assign`. They
+    require you to compute manually the numbers required. The mean of the
+    result is just the computation carried on on the means of the operands as
+    usual. To propagate the uncertainty, the derivative of the function
+    computed at the means is required.
+    
+    Example re-implementing sin:
+    
+    ~~~cpp
+    #include <cmath>
+    ...
+    unc::udouble usin(unc::udouble &x) {
+        double mean = sin(x.n());
+        double dsindx = cos(x.n());
+        return unary(x, mean, dsindx);
+    }
+    ~~~
+    
+    Example re-implementing multiplication:
+    
+    ~~~cpp
+    unc::udouble umult(unc::udouble &x, unc::udouble &y) {
+        double mean = x.n() * y.n();
+        double dmdx = y.n();
+        double dmdy = x.n();
+        return binary(x, y, mean, dmdx, dmdy);
+    }
+    ~~~
+    
+    Internals
+    =========
+    
+    Independent id
+    --------------
+    
+    Independent ids are integers. Each time a non-zero uncertainty `UReal` is
+    initialized, a global counter is increased. The counter is thread-safe.
+    
+    Dependency tracking
+    -------------------
+    
+    
+    
     */
     template<typename Real>
     class UReal {
@@ -130,11 +279,6 @@ namespace uncertainties {
             return this->sdev;
         }
 
-        operator std::string() {
-            using std::to_string;
-            return to_string(n()) + "+/-" + to_string(s());
-        }
-        
         template<typename... Args>
         std::string format(Args &&... args) const {
             return uncertainties::format(*this, std::forward<Args>(args)...);

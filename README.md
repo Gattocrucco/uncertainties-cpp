@@ -15,10 +15,15 @@ alongside your code) and make sure to include the special header
 
 ### Requirements
 
-The C++ dialect is C++11. The header `ureals.hpp` requires
-[Eigen](http://eigen.tuxfamily.org).
+The C++ dialect is C++11. The header `ureals.hpp` (not to be confused with
+`ureal.hpp`) requires [Eigen](http://eigen.tuxfamily.org).
 
 ## Usage
+
+All the definitions are in the namespace `uncertainties`. The library is split
+in various headers. The principal header is `ureal.hpp` which defines the class
+template `UReal`, which is aliased to `udouble = UReal<double>` and
+`ufloat = UReal<float>`.
 
 Basic example:
 ~~~cpp
@@ -50,8 +55,7 @@ between the real and imaginary parts.
 
 ## Documentation
 
-Use `doxygen` to generate the reference documentation in html format. But it is
-just a stub currently.
+Use `doxygen` to generate the documentation in html format.
 
 ## Tests
 

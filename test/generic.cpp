@@ -26,6 +26,7 @@ void print_matrix(Vector m) {
 }
 
 int main() {
+    udouble a = {1, 2};
     udouble x(1, 1);
     udouble y {1, 1};
     std::cout << "x - x = " << (x - x).format() << "\n";

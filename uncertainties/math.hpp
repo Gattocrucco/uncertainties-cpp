@@ -31,149 +31,201 @@
 namespace uncertainties {
     template<typename Real>
     UReal<Real> abs(const UReal<Real> &x) {
-        return unary(x, std::abs(x.n()), x.n() >= 0 ? 1 : -1);
+        using std::abs;
+        return unary(x, abs(x.n()), x.n() >= 0 ? 1 : -1);
     }
     template<typename Real>
     UReal<Real> fmod(const UReal<Real> &x, const UReal<Real> &y) {
-        return binary(x, y, std::fmod(x.n(), y.n()), 1, -std::trunc(x.n() / y.n()));
+        using std::fmod;
+        return binary(x, y, fmod(x.n(), y.n()), 1, -trunc(x.n() / y.n()));
     }
     template<typename Real>
     UReal<Real> remainder(const UReal<Real> &x, const UReal<Real> &y) {
-        return binary(x, y, std::remainder(x.n(), y.n()), 1, -std::round(x.n() / y.n()));
+        using std::remainder;
+        using std::round;
+        return binary(x, y, remainder(x.n(), y.n()), 1, -round(x.n() / y.n()));
     }
     template<typename Real>
     UReal<Real> fmax(const UReal<Real> &x, const UReal<Real> &y) {
-        const Real max = std::fmax(x.n(), y.n());
+        using std::fmax;
+        const Real max = fmax(x.n(), y.n());
         const bool c = max == x.n();
         return binary(x, y, max, c ? 1 : 0, c ? 0 : 1);
     }
     template<typename Real>
     UReal<Real> fmin(const UReal<Real> &x, const UReal<Real> &y) {
-        const Real min = std::fmin(x.n(), y.n());
+        using std::fmin;
+        const Real min = fmin(x.n(), y.n());
         const bool c = min == x.n();
         return binary(x, y, min, c ? 1 : 0, c ? 0 : 1);
     }
     // fdim?
     template<typename Real>
     UReal<Real> exp(const UReal<Real> &x) {
-        return unary(x, std::exp(x.n()), std::exp(x.n()));
+        using std::exp;
+        return unary(x, exp(x.n()), exp(x.n()));
     }
     template<typename Real>
     UReal<Real> exp2(const UReal<Real> &x) {
-        return unary(x, std::exp2(x.n()), std::log(Real(2)) * std::exp2(x.n()));
+        using std::exp2;
+        using std::log;
+        return unary(x, exp2(x.n()), log(Real(2)) * exp2(x.n()));
     }
     template<typename Real>
     UReal<Real> expm1(const UReal<Real> &x) {
-        return unary(x, std::expm1(x.n()), std::exp(x.n()));
+        using std::expm1;
+        using std::exp;
+        return unary(x, expm1(x.n()), exp(x.n()));
     }
     template<typename Real>
     UReal<Real> log(const UReal<Real> &x) {
-        return unary(x, std::log(x.n()), Real(1) / x.n());
+        using std::log;
+        return unary(x, log(x.n()), Real(1) / x.n());
     }
     template<typename Real>
     UReal<Real> log10(const UReal<Real> &x) {
-        return unary(x, std::log10(x.n()), Real(1) / (x.n() * std::log(Real(10))));
+        using std::log10;
+        using std::log;
+        return unary(x, log10(x.n()), Real(1) / (x.n() * log(Real(10))));
     }
     template<typename Real>
     UReal<Real> log2(const UReal<Real> &x) {
-        return unary(x, std::log2(x.n()), Real(1) / (x.n() * std::log(Real(2))));
+        using std::log2;
+        using std::log;
+        return unary(x, log2(x.n()), Real(1) / (x.n() * log(Real(2))));
     }
     template<typename Real>
     UReal<Real> log1p(const UReal<Real> &x) {
-        return unary(x, std::log1p(x.n()), Real(1) / (Real(1) + x.n()));
+        using std::log1p;
+        return unary(x, log1p(x.n()), Real(1) / (Real(1) + x.n()));
     }
     template<typename Real>
     UReal<Real> pow(const UReal<Real> &x, const UReal<Real> &y) {
-        const Real p = std::pow(x.n(), y.n());
-        return binary(x, y, p, p * y.n() / x.n(), p * std::log(x.n()));
+        using std::pow;
+        using std::log;
+        const Real p = pow(x.n(), y.n());
+        return binary(x, y, p, p * y.n() / x.n(), p * log(x.n()));
     }
     template<typename Real>
     UReal<Real> sqrt(const UReal<Real> &x) {
-        return unary(x, std::sqrt(x.n()), Real(1) / (2 * std::sqrt(x.n())));
+        using std::sqrt;
+        return unary(x, sqrt(x.n()), Real(1) / (2 * sqrt(x.n())));
     }
     template<typename Real>
     UReal<Real> cbrt(const UReal<Real> &x) {
-        return unary(x, std::cbrt(x.n()), std::pow(x.n(), -Real(2) / Real(3)) / Real(3));
+        using std::cbrt;
+        using std::pow;
+        return unary(x, cbrt(x.n()), pow(x.n(), -Real(2) / Real(3)) / Real(3));
     }
     template<typename Real>
     UReal<Real> hypot(const UReal<Real> &x, const UReal<Real> &y) {
-        const Real h = std::hypot(x.n(), y.n());
+        using std::hypot;
+        const Real h = hypot(x.n(), y.n());
         return binary(x, y, h, x.n() / h, y.n() / h);
     }
     template<typename Real>
     UReal<Real> sin(const UReal<Real> &x) {
-        return unary(x, std::sin(x.n()), std::cos(x.n()));
+        using std::sin;
+        using std::cos;
+        return unary(x, sin(x.n()), cos(x.n()));
     }
     template<typename Real>
     UReal<Real> cos(const UReal<Real> &x) {
-        return unary(x, std::cos(x.n()), -std::sin(x.n()));
+        using std::cos;
+        using std::sin;
+        return unary(x, cos(x.n()), -sin(x.n()));
     }
     template<typename Real>
     UReal<Real> tan(const UReal<Real> &x) {
-        const Real t = std::tan(x.n());
+        using std::tan;
+        const Real t = tan(x.n());
         return unary(x, t, Real(1) + t * t);
     }
     template<typename Real>
     UReal<Real> asin(const UReal<Real> &x) {
-        return unary(x, std::asin(x.n()), Real(1) / std::sqrt(1 - x.n() * x.n()));
+        using std::asin;
+        using std::sqrt;
+        return unary(x, asin(x.n()), Real(1) / sqrt(1 - x.n() * x.n()));
     }
     template<typename Real>
     UReal<Real> acos(const UReal<Real> &x) {
-        return unary(x, std::acos(x.n()), -Real(1) / std::sqrt(1 - x.n() * x.n()));
+        using std::acos;
+        using std::sqrt;
+        return unary(x, acos(x.n()), -Real(1) / sqrt(1 - x.n() * x.n()));
     }
     template<typename Real>
     UReal<Real> atan(const UReal<Real> &x) {
-        return unary(x, std::atan(x.n()), Real(1) / (1 + x.n() * x.n()));
+        using std::atan;
+        return unary(x, atan(x.n()), Real(1) / (1 + x.n() * x.n()));
     }
     template<typename Real>
     UReal<Real> atan2(const UReal<Real> &x, const UReal<Real> &y) {
+        using std::atan2;
         const Real yx = y.n() / x.n();
         const Real dy = Real(1) / ((Real(1) + yx * yx) * x.n());
         const Real dx = dy * (-yx);
-        return binary(x, y, std::atan2(x.n(), y.n()), dx, dy);
+        return binary(x, y, atan2(x.n(), y.n()), dx, dy);
     }
     template<typename Real>
     UReal<Real> sinh(const UReal<Real> &x) {
-        return unary(x, std::sinh(x.n()), std::cosh(x.n()));
+        using std::sinh;
+        using std::cosh;
+        return unary(x, sinh(x.n()), cosh(x.n()));
     }
     template<typename Real>
     UReal<Real> cosh(const UReal<Real> &x) {
-        return unary(x, std::cosh(x.n()), std::sinh(x.n()));
+        using std::cosh;
+        using std::sinh;
+        return unary(x, cosh(x.n()), sinh(x.n()));
     }
     template<typename Real>
     UReal<Real> tanh(const UReal<Real> &x) {
-        const Real t = std::tanh(x.n());
+        using std::tanh;
+        const Real t = tanh(x.n());
         return unary(x, t, Real(1) - t * t);
     }
     template<typename Real>
     UReal<Real> asinh(const UReal<Real> &x) {
-        return unary(x, std::asinh(x.n()), Real(1) / std::sqrt(x.n() * x.n() + 1));
+        using std::asinh;
+        using std::sqrt;
+        return unary(x, asinh(x.n()), Real(1) / sqrt(x.n() * x.n() + 1));
     }
     template<typename Real>
     UReal<Real> acosh(const UReal<Real> &x) {
-        return unary(x, std::acosh(x.n()), Real(1) / std::sqrt(x.n() * x.n() - 1));
+        using std::acosh;
+        using std::sqrt;
+        return unary(x, acosh(x.n()), Real(1) / sqrt(x.n() * x.n() - 1));
     }
     template<typename Real>
     UReal<Real> atanh(const UReal<Real> &x) {
-        return unary(x, std::atanh(x.n()), Real(1) / (1 - x.n() * x.n()));
+        using std::atanh;
+        return unary(x, atanh(x.n()), Real(1) / (1 - x.n() * x.n()));
     }
     template<typename Real>
     UReal<Real> erf(const UReal<Real> &x) {
-        static const Real erf_coeff = Real(2) / std::sqrt(Real(3.141592653589793238462643383279502884L));
-        return unary(x, std::erf(x.n()), erf_coeff * std::exp(-x.n() * x.n()));
+        using std::erf;
+        using std::sqrt;
+        using std::exp;
+        static const Real erf_coeff = Real(2) / sqrt(Real(3.141592653589793238462643383279502884L));
+        return unary(x, erf(x.n()), erf_coeff * exp(-x.n() * x.n()));
     }
     template<typename Real>
     UReal<Real> erfc(const UReal<Real> &x) {
-        static const Real erf_coeff = Real(2) / std::sqrt(Real(3.141592653589793238462643383279502884L));
-        return unary(x, std::erfc(x.n()), -erf_coeff * std::exp(-x.n() * x.n()));
+        using std::erfc;
+        using std::sqrt;
+        using std::exp;
+        static const Real erf_coeff = Real(2) / sqrt(Real(3.141592653589793238462643383279502884L));
+        return unary(x, erfc(x.n()), -erf_coeff * exp(-x.n() * x.n()));
     }
     template<typename Real>
     bool isfinite(const UReal<Real> &x) {
-        return std::isfinite(x.n()) and std::isfinite(x.s());
+        using std::isfinite;
+        return isfinite(x.n()) and isfinite(x.s());
     }
     template<typename Real>
     bool isnormal(const UReal<Real> &x) {
-        return std::isnormal(x.n()) and std::isnormal(x.s());
+        using std::isnormal;
+        return isnormal(x.n()) and isnormal(x.s());
     }
 }
 

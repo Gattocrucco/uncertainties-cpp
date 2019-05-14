@@ -21,7 +21,7 @@
 #define UNCERTAINTIES_IO_HPP_6DDCDE20
 
 /*! \file
-\brief Defines string conversion and stream operations on `UReal`s.
+\brief Defines formatting and stream operations on `UReal`s.
 */
 
 #include <ostream>
@@ -33,9 +33,6 @@
 #include "core.hpp"
 
 namespace uncertainties {
-    template<typename Real>
-    class UReal;
-    
     namespace internal {
         template<typename Real>
         int exponent(const Real &x) {

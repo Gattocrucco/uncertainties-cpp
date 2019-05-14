@@ -109,25 +109,30 @@ namespace uncertainties {
         
         Real s() const {
             if (this->id >= 0) {
-                return std::abs(this->sdev);
+                using std::abs;
+                return abs(this->sdev);
             } else if (this->sdev >= 0) {
                 return this->sdev;
             } else {
-                return std::sqrt(this->s2());
+                using std::sqrt;
+                return sqrt(this->s2());
             }
         }
                 
         Real s() {
             if (this->id >= 0) {
-                return std::abs(this->sdev);
+                using std::abs;
+                return abs(this->sdev);
             } else if (this->sdev < 0) {
-                this->sdev = std::sqrt(this->s2());
+                using std::sqrt;
+                this->sdev = sqrt(this->s2());
             }
             return this->sdev;
         }
 
         operator std::string() {
-            return std::to_string(n()) + "+/-" + std::to_string(s());
+            using std::to_string;
+            return to_string(n()) + "+/-" + to_string(s());
         }
         
         template<typename... Args>
@@ -207,7 +212,8 @@ namespace uncertainties {
             if (x.id >= 0) {
                 return x.sdev * x.sdev;
             } else if (x.sdev < 0) {
-                x.sdev = std::sqrt(x.s2());
+                using std::sqrt;
+                x.sdev = sqrt(x.s2());
             }
             return x.sdev * x.sdev;
         }

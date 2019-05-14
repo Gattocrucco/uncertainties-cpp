@@ -13,13 +13,10 @@ Place the directory `uncertainties` in a place of your choice (possibly
 alongside your code) and make sure to include the special header
 `uncertainties/impl.hpp` in one (and only one) of your source files.
 
-### Dependencies
+### Requirements
 
-The header `ureals.hpp` requires [Eigen](http://eigen.tuxfamily.org).
-
-### C++ dialect
-
-Thoroughly C++11, no more no less.
+The C++ dialect is C++11. The header `ureals.hpp` requires
+[Eigen](http://eigen.tuxfamily.org).
 
 ## Usage
 
@@ -53,8 +50,8 @@ between the real and imaginary parts.
 
 ## Documentation
 
-Use `doxygen` to generate the documentation in html format. But it is just a
-stub currently.
+Use `doxygen` to generate the reference documentation in html format. But it is
+just a stub currently.
 
 ## Tests
 

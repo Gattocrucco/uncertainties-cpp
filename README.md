@@ -38,6 +38,19 @@ int main() {
 }
 ~~~
 
+## Features
+
+* Independent variables do not use the heap.
+
+* Same class for independent and dependent variables.
+
+* User-defined types supported.
+
+Note: you cannot use `std::complex<udouble, udouble>` because it is not
+supported by the standard library and you cannot use
+`UReal<std::complex<double>>` because it does not keep track of the correlation
+between the real and imaginary parts.
+
 ## Documentation
 
 Use `doxygen` to generate the documentation in html format. But it is just a

@@ -112,6 +112,9 @@ namespace uncertainties {
         
         template<typename Real>
         std::string tostring(const Real &x) {
+            if (x == 0) {
+                return "0";
+            }
             const int n = 6;
             int e = exponent(x);
             std::string m = mantissa(x, n, &e);

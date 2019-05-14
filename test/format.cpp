@@ -17,6 +17,13 @@ void check(const Real &n, const Real &s, const std::string &str, Args &&... args
 }
 
 int main() {
+    check<double>(123456, 0, "123456 pm 0", 2, " pm ");
+    check<double>(12345.6, 0, "12345.6 pm 0", 2, " pm ");
+    check<double>(12345.67, 0, "12345.7 pm 0", 2, " pm ");
+    check<double>(1e8, 0, "1.00000e+8 pm 0", 2, " pm ");
+    check<double>(1e-2, 0, "1.00000e-2 pm 0", 2, " pm ");
+    check<double>(1e-1, 0, "0.100000 pm 0", 2, " pm ");
+    check<double>(12345.99, 0, "12346.0 pm 0", 2, " pm ");
     check<double>(0, 0.001, "(0.0 pm 1.0)e-3", 2, " pm ");
     check<double>(0, 0.01, "(0.0 pm 1.0)e-2", 2, " pm ");
     check<double>(0, 0.1, "0.00 pm 0.10", 2, " pm ");

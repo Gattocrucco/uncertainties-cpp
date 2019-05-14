@@ -26,6 +26,7 @@
 
 #include <functional>
 #include <limits>
+#include <cmath>
 
 #include "core.hpp"
 
@@ -54,8 +55,8 @@ namespace uncertainties {
     namespace internal {
         template<typename Real>
         constexpr Real default_step() {
-            return (1 << (std::numeric_limits<Real>::digits / 2))
-                   * std::numeric_limits<Real>::epsilon();
+            using std::sqrt;
+            return sqrt(std::numeric_limits<Real>::epsilon());
         };
     }
     
@@ -67,7 +68,8 @@ namespace uncertainties {
         return [f, rstep, astep](const UReal<Real> &x) {
             const Real &mu = x.n();
             const Real fmu = f(mu);
-            const Real step = std::abs(fmu) * rstep + astep;
+            using std::abs;
+            const Real step = abs(fmu) * rstep + astep;
             const Real dx = (f(mu + step) - fmu) / step;
             return unary(x, fmu, dx);
         };
@@ -82,7 +84,8 @@ namespace uncertainties {
             const Real &xn = x.n();
             const Real &yn = y.n();
             const Real fn = f(xn, yn);
-            const Real step = std::abs(fn) * rstep + astep;
+            using std::abs;
+            const Real step = abs(fn) * rstep + astep;
             const Real dfdx = (f(xn + step, yn) - fn) / step;
             const Real dfdy = (f(xn, yn + step) - fn) / step;
             return binary(x, y, fn, dfdx, dfdy);

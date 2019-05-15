@@ -32,16 +32,21 @@
 
 namespace uncertainties {
     template<typename Real>
-    std::function<UReal<Real>(const UReal<Real> &)>
-    uunary(const std::function<const Real &(const Real &)> &f,
-           const std::function<const Real &(const Real &)> &df) {
+    using UUnary = std::function<UReal<Real>(const UReal<Real> &)>;
+    
+    template<typename Real>
+    using UBinary = std::function<UReal<Real>(const UReal<Real> &, const UReal<Real> &)>;
+    
+    template<typename Real>
+    UUnary<Real> uunary(const std::function<const Real &(const Real &)> &f,
+                        const std::function<const Real &(const Real &)> &df) {
         return [f, df](const UReal<Real> &x) {
             return unary(x, f(x.n()), df(x.n()));
         };
     }
     
     template<typename Real>
-    std::function<UReal<Real>(const UReal<Real> &, const UReal<Real> &)>
+    UBinary<Real>
     ubinary(const std::function<Real(const Real &, const Real &)> &f,
             const std::function<Real(const Real &, const Real &)> &dfdx,
             const std::function<Real(const Real &, const Real &)> &dfdy) {
@@ -61,7 +66,7 @@ namespace uncertainties {
     }
     
     template<typename Real>
-    std::function<UReal<Real>(const UReal<Real> &)>
+    UUnary<Real>
     uunary(const std::function<Real(const Real &)> &f,
            const Real &astep=internal::default_step<Real>(),
            const Real &rstep=internal::default_step<Real>()) {
@@ -76,7 +81,7 @@ namespace uncertainties {
     }
     
     template<typename Real>
-    std::function<UReal<Real>(const UReal<Real> &, const UReal<Real> &)>
+    UBinary<Real>
     ubinary(const std::function<Real(const Real &, const Real &)> &f,
             const Real &astep=internal::default_step<Real>(),
             const Real &rstep=internal::default_step<Real>()) {

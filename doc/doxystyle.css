@@ -26,6 +26,10 @@ div.line {
     line-height: 1.2;
 }
 
+span.mlabel {
+    font-size: 0.7em;
+}
+
 img[alt=Logo] {
     height: 55px;
 }

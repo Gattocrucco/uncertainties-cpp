@@ -164,6 +164,28 @@ namespace uncertainties {
     So the property of an independent variable is that it has either zero
     or full (1 or -1) correlation with any other variable.
     
+    Efficiency
+    ==========
+    
+    A dependent variable stores its dependency to all the independent variables
+    that entered the computations. If a variable depends on \f$ N \f$
+    independent variables, operations on the variable in general are \f$ O(N)
+    \f$. Example of a simple but *quadratical* computation:
+    
+    ~~~cpp
+    unc::udouble x = 0.0;
+    for (int i = 0; i < 1000; ++i)
+        x = x + unc::udouble(1.0, 0.1);
+    ~~~
+    
+    This seemingly innocent loop at each iteration creates a temporary variable
+    containing the result of `x + {1.0, 0.1}` and copies it back to `x`. At
+    iteration `i`, there are `i` independent variable coefficients stored into
+    `x`, so the copy takes time `i`. The total number of coefficients copied is
+    then about \f$ 1000 \cdot 1000 / 2 = 500000 \f$. The right way to do the
+    summation is using the add-assign operator and do `x += unc::udouble(1.0,
+    0.1)` in the loop.
+    
     Implementing functions
     ======================
     
@@ -264,18 +286,43 @@ namespace uncertainties {
     template<typename Real>
     class UReal {
     private:
-        using Type = UReal<Real>;
-        
-        // id == 0 -> sdev == 0, sigma.size() == 0
-        // id > 0 -> sigma.size() == 0
-        // id < 0, sdev < 0 -> sigma.size() >= 0, sdev completely ignored
-        // id < 0, sdev >= 0 -> sigma.size() >= 0, sdev * sdev == s2()
+        // private variables (there are no other variables around):
         Id id;
         Real sdev;
         Real mu;
         std::map<Id, Real> sigma;
         
+        // Summary of class invariants:
+        // id == 0 -> sdev == 0, sigma.size() == 0
+        // id > 0 -> sigma.size() == 0
+        // id < 0, sdev < 0 -> sigma.size() >= 0, sdev completely ignored
+        // id < 0, sdev >= 0 -> sigma.size() >= 0, sdev * sdev == s2()
+        
+        /* Longer explanation:
+        
+        `id` is the independent variable id (a signed integer). It is set to
+        zero if the variable is initialized with a zero standard deviation.
+        In this way a variable with `id == 0` can be completely ignored when
+        propagating uncertainties.
+        
+        For new variables with nonzero standard deviation, `id` is set
+        to a positive number that is incremented each time. The id of variables
+        which are the result of a computation is set to `invalid_id` (a
+        negative value).
+        
+        If id > 0, i.e. the variable is independent, the variable `sdev` does
+        not store the standard deviation but the coefficient dy/dx * sigma_x,
+        so the standard deviation is the absolute value of `sdev`.
+        
+        If id < 0, i.e. the variable is dependent, the map `sigma` is used to
+        store the pairs {id_x, dy/dx * sigma_x} for all the independent
+        variables `x` that entered the computations. The variable `sdev` is used
+        as a cache for the standard deviation, if sdev < 0 it has to be computed
+        using the private member function `s2`.
+        */
+        
         Real s2() const {
+            // computes the variance
             Real s2(0);
             for (const auto &it : this->sigma) {
                 const Real &s = it.second;
@@ -285,8 +332,18 @@ namespace uncertainties {
         }
         
     public:
+        /*!
+        \brief The numerical type used.
+        */
         using real_type = Real;
         
+        /*!
+        \brief Construct a new independent variable with mean `n` and standard
+        deviation `s`.
+        
+        Throws `std::invalid_argument` if `s < 0`. Using this constructor is the
+        only way to generate a new independent variable id.
+        */
         UReal(const Real n, const Real s):
         mu {std::move(n)}, sdev {std::move(s)}, id {++internal::last_id} {
             if (this->sdev < 0) {
@@ -294,26 +351,62 @@ namespace uncertainties {
             }
         }
         
+        /*!
+        \brief Construct a variable with mean `n` and zero variance.
+        
+        A new independent variable id is *not* generated.
+        */
         UReal(const Real n): mu {std::move(n)} {
             ;
         }
         
+        /*!
+        \brief Construct a variable with zero mean and variance.
+        
+        A new independent variable id is *not* generated.
+        */
         UReal() {
             ;
         }
         
-        bool isindep() const noexcept {
+        /*!
+        \brief Return true if the variable is independent.
+        
+        Independent implies that the variable can only have 0, +1 or -1
+        correlation with any other independent variable. In practice a variable
+        is independent after construction and independent variables can be
+        obtained only (but not necessarily) by applying a unary operation
+        to an independent variable.
+        */
+        inline bool isindep() const noexcept {
             return this->id >= 0;
         }
         
-        Id indepid() const noexcept {
+        /*!
+        \brief Return the independent variable id if the variable is
+        independent.
+        
+        If it is not, it returns `invalid_id`.
+        */
+        inline Id indepid() const noexcept {
             return this->id;
         }
         
-        const Real &n() const noexcept {
+        /*!
+        \brief Return the mean.
+        */
+        inline const Real &n() const noexcept {
             return this->mu;
         }
         
+        /*!
+        \brief Return the standard deviation.
+        
+        For an independent variable it means just returning a number. If
+        the variable is dependent a potentially expensive calculation is
+        performed. This is the const-qualified version of `s` and so the
+        result is not cached and is computed at every invocation.
+        */
         Real s() const {
             if (this->id >= 0) {
                 using std::abs;
@@ -326,6 +419,15 @@ namespace uncertainties {
             }
         }
                 
+        /*!
+        \brief Return the standard deviation.
+        
+        For an independent variable it means just returning a number. If
+        the variable is dependent a potentially expensive calculation is
+        performed. In this case the result is cached. Note that, if the variable
+        is const, the const-qualified version of this function is called and
+        it can not cache the result.
+        */
         Real s() {
             if (this->id >= 0) {
                 using std::abs;
@@ -337,13 +439,26 @@ namespace uncertainties {
             return this->sdev;
         }
 
+        /*!
+        \brief Format the variable.
+        
+        This function just calls `format(x, args...)`. The `format` function
+        is defined in `io.hpp`. Using this function will generated errors if
+        `io.hpp` has not been included.
+        */
         template<typename... Args>
         std::string format(Args &&... args) const {
             return uncertainties::format(*this, std::forward<Args>(args)...);
         }
         
-        friend Type copy_unc(const Real n, const Type &x) {
-            Type y = x;
+        /*!
+        \brief Copy the uncertainty to another variable, keeping correlations.
+        
+        The result is a variable which is identical to `x` apart from the mean
+        which is set to `n`.
+        */
+        friend UReal<Real> copy_unc(const Real n, const UReal<Real> &x) {
+            UReal<Real> y = x;
             y.mu = std::move(n);
             return y;
         }
@@ -351,8 +466,14 @@ namespace uncertainties {
         template<typename OtherReal>
         friend class UReal;
         
+        /*!
+        \brief Conversion operator to `UReal`s with different numerical type.
+        
+        Converting to an `UReal` with different numerical type preserves all
+        the correlations.
+        */
         template<typename OtherReal>
-        operator UReal<OtherReal>() {
+        operator UReal<OtherReal>() const {
             UReal<OtherReal> x;
             x.id = this->id;
             x.sdev = this->sdev;
@@ -363,14 +484,17 @@ namespace uncertainties {
             return x;
         }
         
-        friend Real cov(const Type &x, const Type &y) {
+        /*!
+        \brief Compute the covariance between `x` and `y`.
+        */
+        friend Real cov(const UReal<Real> &x, const UReal<Real> &y) {
             Real cov(0);
             if (x.id > 0 && y.id > 0) {
                 if (x.id == y.id) {
                     cov += x.sdev * y.sdev;
                 }
             } else if (x.id < 0 or y.id < 0) {
-                const Type *min_size, *max_size;
+                const UReal<Real> *min_size, *max_size;
                 if (x.sigma.size() > y.sigma.size()) {
                     min_size = &y;
                     max_size = &x;
@@ -402,7 +526,14 @@ namespace uncertainties {
             return cov;
         }
         
-        friend Real var(const Type &x) {
+        /*!
+        \brief Compute the variance of `x`.
+        
+        Note that `cov(x, x) == var(x)`, but `var` is faster. Also
+        `var(x) == x.s() * x.s()`. The same caching considerations of the
+        member function `s` apply here.
+        */
+        friend Real var(const UReal<Real> &x) {
             if (x.id >= 0 or x.sdev >= 0) {
                 return x.sdev * x.sdev;
             } else {
@@ -410,7 +541,14 @@ namespace uncertainties {
             }
         }
         
-        friend Real var(Type &x) {
+        /*!
+        \brief Compute the variance of `x`.
+        
+        Note that `cov(x, x) == var(x)`, but `var` is faster. Also
+        `var(x) == x.s() * x.s()`. The same caching considerations of the
+        member function `s` apply here.
+        */
+        friend Real var(UReal<Real> &x) {
             if (x.id >= 0) {
                 return x.sdev * x.sdev;
             } else if (x.sdev < 0) {
@@ -419,13 +557,29 @@ namespace uncertainties {
             }
             return x.sdev * x.sdev;
         }
-
-        friend Real corr(const Type &x, const Type &y) {
+        
+        /*!
+        \brief Compute the correlation between `x` and `y`.
+        
+        The correlation is defined as
+        `corr(x, y) == cov(x, y) / (x.s() * y.s())`.
+        */
+        friend Real corr(const UReal<Real> &x, const UReal<Real> &y) {
             return cov(x, y) / (x.s() * y.s());
         }
         
-        friend Type unary(const Type &x, const Real mu, const Real &dx) {
-            Type y;
+        /*!
+        \brief Apply a function of one argument to `x`.
+        
+        This is a low-level interface. Higher level interfaces are provided
+        in the header `functions.hpp`.
+        
+        The argument `mu` is the mean of the result and should be obtained
+        by applying the function to the mean of `x`. The argument `dx` is the
+        derivative of the function computed at the mean of `x`.
+        */
+        friend UReal<Real> unary(const UReal<Real> &x, const Real mu, const Real &dx) {
+            UReal<Real> y;
             y.id = x.id;
             y.mu = std::move(mu);
             if (x.id > 0) {
@@ -439,11 +593,22 @@ namespace uncertainties {
             }
             return y;
         }
-    
-        friend Type binary(const Type &x, const Type &y,
+        
+        /*!
+        \brief Apply a function of two arguments to `x` and `y`.
+        
+        This is a low-level interface. Higher level interfaces are provided
+        in the header `functions.hpp`.
+        
+        The argument `mu` is the mean of the result and should be obtained by
+        applying the function to the means of `x` and `y`. The argument `dx` is
+        the derivative of the function respect to `x` computed at the means of
+        `x` and `y`; similarly for `dy`.
+        */
+        friend UReal<Real> binary(const UReal<Real> &x, const UReal<Real> &y,
                            const Real mu,
                            const Real &dx, const Real &dy) {
-            Type z;
+            UReal<Real> z;
             z.id = invalid_id;
             z.mu = std::move(mu);
             if (x.id > 0) {
@@ -464,13 +629,25 @@ namespace uncertainties {
             return z;
         }
         
+        /*!
+        \brief Apply a function of any number of arguments to the sequence
+        [`xbegin`, `xend`).
+        
+        This is a low-level interface, but currently no higher-level interface
+        for nary operations is provided in `functions.hpp`.
+        
+        The argument `mu` is the mean of the result and should be obtained by
+        applying the function to the means of [`xbegin`, `xend`). The sequence
+        starting at `dxbegin` are the derivatives respect to the variables in
+        [`xbegin`, `xend`) computed at their means.
+        */
         template<typename XIt, typename DxIt>
-        friend Type nary(XIt xbegin, XIt xend, const Real mu, DxIt dxbegin) {
-            Type z;
+        friend UReal<Real> nary(XIt xbegin, XIt xend, const Real mu, DxIt dxbegin) {
+            UReal<Real> z;
             z.id = invalid_id;
             z.mu = std::move(mu);
             for (; xbegin != xend; ++xbegin, ++dxbegin) {
-                const Type &x = *xbegin;
+                const UReal<Real> &x = *xbegin;
                 const Real &dx = *dxbegin;
                 if (x.id > 0) {
                     z.sigma[x.id] += dx * x.sdev;
@@ -484,7 +661,19 @@ namespace uncertainties {
             return z;
         }
                 
-        const Type &binary_assign(const Type &x, const Real mu,
+        /*!
+        \brief Apply a function of two arguments to the variable and `x`,
+        storing the result in the variable.
+        
+        The argument `mu` is the mean of the result and should be obtained by
+        applying the function to the means of the variable and `x`. The
+        argument `dt` is the derivative of the function respect to the variable
+        computed at the means of the variable and `x`; similarly for `dx`.
+        
+        For dependent variables this can be significantly more efficient than
+        using `binary` and then assigning the result to the first operand.
+        */
+        const UReal<Real> &binary_assign(const UReal<Real> &x, const Real mu,
                                   const Real &dt, const Real &dx) {
             if (&x == this) {
                 const Real d = dt + dx;
@@ -515,36 +704,36 @@ namespace uncertainties {
             return *this;
         }
 
-        friend inline const Type &operator+(const Type &x) noexcept {
+        friend inline const UReal<Real> &operator+(const UReal<Real> &x) noexcept {
             return x;
         }
-        friend Type operator-(const Type &x) {
+        friend UReal<Real> operator-(const UReal<Real> &x) {
             return unary(x, -x.mu, -1);
         }
-        friend Type operator+(const Type &x, const Type &y) {
+        friend UReal<Real> operator+(const UReal<Real> &x, const UReal<Real> &y) {
             return binary(x, y, x.mu + y.mu, 1, 1);
         }
-        friend Type operator-(const Type &x, const Type &y) {
+        friend UReal<Real> operator-(const UReal<Real> &x, const UReal<Real> &y) {
             return binary(x, y, x.mu - y.mu, 1, -1);
         }
-        friend Type operator*(const Type &x, const Type &y) {
+        friend UReal<Real> operator*(const UReal<Real> &x, const UReal<Real> &y) {
             return binary(x, y, x.mu * y.mu, y.mu, x.mu);
         }
-        friend Type operator/(const Type &x, const Type &y) {
+        friend UReal<Real> operator/(const UReal<Real> &x, const UReal<Real> &y) {
             const Real inv_y = Real(1) / y.mu;
             const Real mu = x.mu * inv_y;
             return binary(x, y, mu, inv_y, -mu * inv_y);
         }
-        const Type &operator+=(const Type &x) {
+        const UReal<Real> &operator+=(const UReal<Real> &x) {
             return binary_assign(x, this->mu + x.mu, 1, 1);
         }
-        const Type &operator-=(const Type &x) {
+        const UReal<Real> &operator-=(const UReal<Real> &x) {
             return binary_assign(x, this->mu - x.mu, 1, -1);
         }
-        const Type &operator*=(const Type &x) {
+        const UReal<Real> &operator*=(const UReal<Real> &x) {
             return binary_assign(x, this->mu * x.mu, x.mu, this->mu);
         }
-        const Type &operator/=(const Type &x) {
+        const UReal<Real> &operator/=(const UReal<Real> &x) {
             const Real inv_x = Real(1) / x.mu;
             const Real mu = this->mu * inv_x;
             return binary_assign(x, mu, inv_x, -mu * inv_x);
@@ -555,11 +744,21 @@ namespace uncertainties {
         // ureals(const InVectorA &, const InVectorB &, const Order);
     };
     
+    /*!
+    \brief Return the mean of a variable.
+    
+    Equivalent to `x.n()`.
+    */
     template<typename Real>
     inline const Real &nom(const UReal<Real> &x) noexcept {
         return x.n();
     }
     
+    /*!
+    \brief Return the standard deviation of a variable.
+    
+    Equivalent to `x.s()`.
+    */
     template<typename Real>
     inline Real sdev(const UReal<Real> &x) {
         return x.s();

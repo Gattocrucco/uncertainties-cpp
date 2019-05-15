@@ -5,6 +5,7 @@
 !Doxyfile
 !uncertainties
 !test
+!doc
 
 # macOS
 .DS_Store

@@ -1,9 +1,8 @@
 # uncertainties-cpp {#mainpage}
 
 <img src="uncertainties-cpp-512.png"
-style="width: 256px; float: right; left-margin: 1em;" />
-<img src="doc/uncertainties-cpp-512.png"
-style="width: 256px; float: right; left-margin: 1em;" />
+width="256px" height="256px"
+style="float: right; left-margin: 1em;" />
 
 C++ header library for first-order uncertainty propagation. More or less a port
 of the python package [uncertainties](https://github.com/lebigot/uncertainties)

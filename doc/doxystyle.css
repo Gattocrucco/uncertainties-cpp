@@ -16,9 +16,11 @@ body, table, div, p, dl, table.directory {
 
 div.contents {
     text-align: left;
-    max-width: 92ex;
+    max-width: 96ex;
     margin-left: auto;
     margin-right: auto;
+    padding-right: 2ex;
+    padding-left: 2ex;
 }
 
 div.contents p {

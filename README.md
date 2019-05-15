@@ -1,4 +1,5 @@
-# uncertainties-cpp {#mainpage}
+<!-- \mainpage -->
+# uncertainties-cpp
 
 <img src="doc/uncertainties-cpp-512.png" width="128px" height="128px"
 style="display: none;" />

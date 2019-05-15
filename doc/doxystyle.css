@@ -16,9 +16,17 @@ body, table, div, p, dl, table.directory {
 
 div.contents {
     text-align: left;
-    max-width: 80ex;
+    max-width: 92ex;
     margin-left: auto;
     margin-right: auto;
+}
+
+div.contents p {
+    max-width: 80ex;
+}
+
+div.fragment {
+    overflow-x: scroll;
 }
 
 div.line {

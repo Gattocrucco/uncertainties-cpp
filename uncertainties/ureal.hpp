@@ -152,6 +152,18 @@ namespace uncertainties {
     id = z.isindep(); // false
     ~~~
     
+    An independent variable can be copied and the copy is independent:
+    
+    ~~~cpp
+    y = x;
+    x.isindep(); // true
+    y.isindep(); // true
+    corr(x, y); // 1.0
+    ~~~
+    
+    So the property of an independent variable is that it has either zero
+    or full (1 or -1) correlation with any other variable.
+    
     Implementing functions
     ======================
     
@@ -197,10 +209,56 @@ namespace uncertainties {
     Independent ids are integers. Each time a non-zero uncertainty `UReal` is
     initialized, a global counter is increased. The counter is thread-safe.
     
+    If the uncertainty is zero there is no need to create a new id, because the
+    variable will never propagate any uncertainty in calculations.
+    
     Dependency tracking
     -------------------
     
+    Let \f$ x_i \f$ be independent variables with means \f$ \mu_i \f$ and
+    standard deviations \f$ \sigma_i \f$. Then the covariance of \f$ y =
+    f(x_1,\ldots,x_n) \f$ and \f$ z = g(x_1,\ldots,x_n) \f$ is, to first order:
     
+    \f[
+    \mathrm{Cov}(y, z) = \sum_{ij}
+    \left(\left.\frac{\partial f}{\partial x_i}\right|_{\mu} \sigma_i\right)
+    \left(\left.\frac{\partial g}{\partial x_j}\right|_{\mu} \sigma_j\right).
+    \f]
+    
+    Moreover, let \f$ a_k \f$ be dependent variables, and let \f$ b = h(a_1,
+    \ldots, a_m) \f$. Then the derivative of \f$ b \f$ respect to an independent
+    variable is obtained by:
+    
+    \f[
+    \left.\frac{\partial b}{\partial x_i}\right|_{\mu}
+    = \sum_k \left.\frac{\partial b}{\partial a_k}\right|_{\mu}
+    \left.\frac{\partial a_k}{\partial x_i}\right|_{\mu},
+    \f]
+    
+    and so:
+    
+    \f[
+    \left(\left.\frac{\partial b}{\partial x_i}\right|_{\mu}\sigma_i\right)
+    = \sum_k \left.\frac{\partial b}{\partial a_k}\right|_{\mu}
+    \left(\left.\frac{\partial a_k}{\partial x_i}\right|_{\mu}\sigma_i\right).
+    \f]
+    
+    This implies that we just need to store into a dependent variable \f$ y \f$
+    the coefficients \f$ \partial y/\partial x_i \sigma_i \f$ for all the
+    independent variables \f$ x_i \f$ it depends on. `UReal<Real>` uses a
+    `std::map<Id, Real>` to save these coefficients.
+    
+    Independent variable optimization
+    ---------------------------------
+    
+    An independent variable with id `i` and standard deviation `s` can be
+    implemented by setting its internal map to `{{i, s}}`, but this means that
+    independent variables will use the heap. Instead, an `UReal` contains
+    explicit variables for the id and the standard deviation. An independent
+    `UReal` uses these two variables and leaves the map empty, while a
+    dependent `UReal` sets the id to `invalid_id` and uses the standard
+    deviation variable as a cache of the standard deviation computed from the
+    map.
     
     */
     template<typename Real>

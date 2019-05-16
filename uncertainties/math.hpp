@@ -21,7 +21,17 @@
 #define UNCERTAINTIES_MATH_HPP_0A89E052
 
 /*! \file
-\brief Defines functions of `<cmath>` on `UReal`s.
+\brief Defines standard math functions on `UReal`s.
+
+The functions are a subset of the functions from the standard header `<cmath>`.
+(You can read a detailed description of them on
+[cppreference](https://en.cppreference.com/w/cpp/header/cmath).)
+
+Be careful with non smooth functions (`abs`, `fmod`, `remainder`, `fmax`,
+`fmin`): if the distance of the mean from the non derivable point is comparable
+with the standard deviation, probably first order (or any order) propagation
+does not make sense.
+
 */
 
 #include <cmath>
@@ -206,7 +216,8 @@ namespace uncertainties {
         using std::erf;
         using std::sqrt;
         using std::exp;
-        static const Real erf_coeff = Real(2) / sqrt(Real(3.141592653589793238462643383279502884L));
+        using std::atan2;
+        static const Real erf_coeff = Real(2) / sqrt(atan2(Real(0), Real(-1)));
         return unary(x, erf(x.n()), erf_coeff * exp(-x.n() * x.n()));
     }
     template<typename Real>
@@ -214,14 +225,21 @@ namespace uncertainties {
         using std::erfc;
         using std::sqrt;
         using std::exp;
-        static const Real erf_coeff = Real(2) / sqrt(Real(3.141592653589793238462643383279502884L));
+        using std::atan2;
+        static const Real erf_coeff = Real(2) / sqrt(atan2(Real(0), Real(-1)));
         return unary(x, erfc(x.n()), -erf_coeff * exp(-x.n() * x.n()));
     }
+    /*!
+    \brief Return `isfinite(x.n()) && isfinite(x.s())`.
+    */
     template<typename Real>
     bool isfinite(const UReal<Real> &x) {
         using std::isfinite;
         return isfinite(x.n()) and isfinite(x.s());
     }
+    /*!
+    \brief Return `isnormal(x.n()) && isnormal(x.s())`.
+    */
     template<typename Real>
     bool isnormal(const UReal<Real> &x) {
         using std::isnormal;

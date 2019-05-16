@@ -21,8 +21,10 @@
 #define UNCERTAINTIES_UREALS_HPP_61EB1909
 
 /*! \file
-\brief Defines function `ureals` to generate a list of variables with given
-covariance matrix.
+\brief Defines function `ureals` to generate a list of correlated variables.
+
+The [Eigen](http://eigen.tuxfamily.org) header library is required to use
+this header.
 */
 
 #include <cstddef>
@@ -35,6 +37,11 @@ covariance matrix.
 #include "core.hpp"
 
 namespace uncertainties {
+    /*!
+    \brief Generates a sequence of correlated variables given a covariance
+    matrix.
+    
+    */
     template<typename OutVector, typename InVectorA, typename InVectorB>
     OutVector ureals(const InVectorA &mu, const InVectorB &cov) {
         const std::size_t n = mu.size();

@@ -14,7 +14,7 @@ namespace unc = uncertainties;
 using type = boost::multiprecision::mpfr_float;
 using utype = unc::UReal<type>;
 
-const type tol = 100 * unc::internal::default_step<type>();
+const type tol = 100 * unc::default_step<type>();
 
 bool close(const type &x, const type &y,
            const type &atol=tol, const type &rtol=tol) {

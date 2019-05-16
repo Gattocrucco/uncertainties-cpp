@@ -25,8 +25,16 @@
 
 When formatting a number with uncertainty the important parameter is the
 _number of significant digits of the standard deviation_. The digits of the
-mean are chosen to align with the standard deviation.
+mean are chosen to align with the standard deviation. Example: \f$ 1 \pm 0.136
+\f$ formatted with 2 significative digits is `"1.00 +/- 0.14"`.
 
+The number of uncertainty digits can also be _not an integer_. It means that the
+actual number of digits is chosen to be the lower or upper nearest integer based
+on the mantissa of the uncertainty. The generalized number of digits of the
+mantissa \f$ m \f$ is defined to be \f$ \log_{10}(m) \f$ and is compared with
+the fractional part of the number of digits requested. For example: with 1.5
+significative digits, \f$ 1 \pm 0.31 \f$ is `"1.00 +/- 0.31"` while \f$ 1 \pm
+0.32 \f$ is `"1.0 +/- 0.3"`.
 */
 
 #include <ostream>
@@ -89,13 +97,16 @@ namespace uncertainties {
         
         template<typename Real>
         int ndigits(Real *const x, const float n) {
-            const int cand_ndig = naive_ndigits(*x, n);
+            int ndig = naive_ndigits(*x, n);
             const int xexp = exponent(*x);
-            const Real rounded_x = int_mantissa(*x, cand_ndig, xexp);
-            const int ndig = naive_ndigits(rounded_x, n);
-            if (ndig > cand_ndig) {
-                using std::pow;
-                *x = rounded_x * pow(Real(10), xexp);
+            const Real rounded_x = int_mantissa(*x, ndig, xexp) * pow(Real(10), xexp);
+            if (rounded_x > *x) {
+                const int rounded_ndig = naive_ndigits(rounded_x, n);
+                if (rounded_ndig > ndig) {
+                    using std::pow;
+                    *x = rounded_x;
+                    ndig = rounded_ndig;
+                }
             }
             return ndig;
         }

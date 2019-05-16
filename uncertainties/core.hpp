@@ -71,6 +71,17 @@ namespace uncertainties {
     
     /*!
     \brief Convert an `UReal` to a human-readable string.
+    
+    `x` can actually be any type, provided `nom` and `sdev` are defined for it.
+    (They are already overloaded by uncertainties to return respectively the
+    value itself and 0 if the type is not `UReal`.)
+    
+    The argument `errdig` is the number of significative digits of the
+    uncertainty. The number of significative digits of the mean is chosen to
+    align the least significative digit with the uncertainty. See the general
+    description in `io.hpp` for details.
+    
+    `sep` is the string put between the mean and the standard deviation.
     */
     template<typename Number>
     std::string format(const Number &x,

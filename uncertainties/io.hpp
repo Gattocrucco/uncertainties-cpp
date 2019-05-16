@@ -22,6 +22,11 @@
 
 /*! \file
 \brief Defines formatting and stream operations on `UReal`s.
+
+When formatting a number with uncertainty the important parameter is the
+_number of significant digits of the standard deviation_. The digits of the
+mean are chosen to align with the standard deviation.
+
 */
 
 #include <ostream>
@@ -129,6 +134,7 @@ namespace uncertainties {
         }
     }
     
+    // the documentation is in core.hpp because the default arguments are there
     template<typename Number>
     std::string format(const Number &x,
                        const float errdig,
@@ -168,6 +174,11 @@ namespace uncertainties {
         }
     }
     
+    /*!
+    \brief Output operation on streams for `UReal`.
+    
+    Just calls `format(x)` and outputs the string to the stream.
+    */
     template<typename Real, typename CharT>
     std::basic_ostream<CharT> &operator<<(std::basic_ostream<CharT> &stream,
                                           const UReal<Real> &x) {

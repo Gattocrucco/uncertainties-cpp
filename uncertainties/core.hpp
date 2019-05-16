@@ -69,6 +69,9 @@ namespace uncertainties {
         return 0;
     }
     
+    /*!
+    \brief Convert an `UReal` to a human-readable string.
+    */
     template<typename Number>
     std::string format(const Number &x,
                        const float errdig=1.5f,

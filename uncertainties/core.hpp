@@ -46,14 +46,6 @@ namespace uncertainties {
     class UReal;
     
     /*!
-    \brief Matrix storage order.
-    */
-    enum class Order {
-        row_major,
-        col_major
-    };
-    
-    /*!
     \brief For a normal number, `nom` just returns the number.
     */
     template<typename Number>
@@ -89,9 +81,7 @@ namespace uncertainties {
                        const std::string &sep=" ± ");
 
     template<typename OutVector, typename InVectorA, typename InVectorB>
-    OutVector ureals(const InVectorA &mu,
-                     const InVectorB &cov,
-                     const Order order=Order::row_major);
+    OutVector ureals(const InVectorA &mu, const InVectorB &cov);
 }
 
 #endif /* end of include guard: UNCERTAINTIES_CORE_HPP_D4C14D73 */

@@ -36,9 +36,7 @@ covariance matrix.
 
 namespace uncertainties {
     template<typename OutVector, typename InVectorA, typename InVectorB>
-    OutVector ureals(const InVectorA &mu,
-                     const InVectorB &cov,
-                     const Order order) {
+    OutVector ureals(const InVectorA &mu, const InVectorB &cov) {
         const std::size_t n = mu.size();
         if (n != 0 ? cov.size() % n != 0 or cov.size() / n != n : cov.size() != 0) {
             throw std::invalid_argument(
@@ -55,12 +53,10 @@ namespace uncertainties {
         using Matrix = Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>;
         using Vector = Eigen::Matrix<Real, Eigen::Dynamic, 1>;
         Matrix V(n, n);
-        // can be optimized in the following ways:
-        // - use Eigen::Map to directly use cov.data()
-        // - specify storage order with Eigen template parameter
+        // can be optimized using Eigen::Map to directly use cov.data()
         for (std::size_t i = 0; i < n; ++i) {
             for (std::size_t j = 0; j < n; ++j) {
-                V(i, j) = order == Order::row_major ? cov[n * i + j] : cov[n * j + i];
+                V(i, j) = cov[n * i + j];
             }
         }
         // will this throw if V is not self-adjoint? answer: no

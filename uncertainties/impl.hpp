@@ -21,7 +21,9 @@
 #define UNCERTAINTIES_IMPL_HPP_8AC76B25
 
 /*! \file
-\brief Import this header in a source file of your choice.
+\brief Import this header in one (and only one) source file of your choice.
+
+This header contains non-template code to be compiled once. 
 */
 
 #include <string>

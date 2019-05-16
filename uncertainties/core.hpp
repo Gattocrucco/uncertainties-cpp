@@ -21,32 +21,49 @@
 #define UNCERTAINTIES_CORE_HPP_D4C14D73
 
 /*! \file
-\brief Basic declarations and definitions; do not use this header directly.
+\brief Basic declarations and definitions.
 */
 
 #include <string>
 #include <atomic>
 
 namespace uncertainties {
+    /*!
+    \brief Type of independent variables ids.
+    */
     using Id = int; // must be signed
-    namespace internal {
-        extern std::atomic<Id> last_id;
-    }
+    
+    /*!
+    \brief Constant returned by `UReal::indepid` if the variable is dependent.
+    */
     constexpr Id invalid_id = -1; // must be < 0
+    
+    namespace internal {
+        extern std::atomic<Id> last_id; // defined in impl.hpp
+    }
     
     template<typename Real>
     class UReal;
-
+    
+    /*!
+    \brief Matrix storage order.
+    */
     enum class Order {
         row_major,
         col_major
     };
     
+    /*!
+    \brief For a normal number, `nom` just returns the number.
+    */
     template<typename Number>
     inline const Number &nom(const Number &x) noexcept {
         return x;
     }
     
+    /*!
+    \brief For a normal number, `sdev` returns 0.
+    */
     template<typename Number>
     inline Number sdev(const Number &x) noexcept {
         return 0;

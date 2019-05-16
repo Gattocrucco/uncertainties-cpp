@@ -22,6 +22,39 @@
 
 /*! \file
 \brief Factories to create functions taking `UReal`s as input.
+
+To propagate the uncertainty, the derivative of the function is needed.
+The functions in this file pack together a function and its derivative(s) in
+the appropriate way, or take only the function and compute the derivative
+themselves.
+
+Example re-implementing `sin` with explicit derivative:
+
+~~~cpp
+#include <cmath>
+#include <uncertainties/ureal.hpp>
+#include <uncertainties/functions.hpp>
+...
+namespace unc = uncertainties;
+unc::UBinary<double> usin;
+usin = unc::ubinary<double>([](double x) { return sin(x); },
+                            [](double x) { return cos(x); });
+unc::udouble x = {1, 0.1};
+unc::udouble y = usin(x);
+~~~
+
+Example re-implementing `sin` with automatical derivative:
+
+~~~cpp
+unc::UBinary<double> usin_num;
+usin_num = unc::ubinary<double>([](double x) { return sin(x); });
+y = usin_num(x);
+~~~
+
+Note: automatical derivatives implemented here are very simple and significantly
+less precise. You may encounter computational problems if you use automatical
+derivatives, in particular when using `float`.
+
 */
 
 #include <functional>
@@ -31,25 +64,52 @@
 #include "core.hpp"
 
 namespace uncertainties {
+    /*!
+    \brief Type of a function object taking one `Real` and returning `Real`.
+    */
+    template<typename Real>
+    using Unary = std::function<Real(const Real &)>;
+    
+    /*!
+    \brief Type of a function object taking two `Real`s and returning `Real`.
+    */
+    template<typename Real>
+    using Binary = std::function<Real(const Real &, const Real &)>;
+
+    /*!
+    \brief Type of a function object taking one `UReal` and returning `UReal`.
+    */
     template<typename Real>
     using UUnary = std::function<UReal<Real>(const UReal<Real> &)>;
     
+    /*!
+    \brief Type of a function object taking two `UReal`s and returning `UReal`.
+    */
     template<typename Real>
     using UBinary = std::function<UReal<Real>(const UReal<Real> &, const UReal<Real> &)>;
     
+    /*!
+    \brief Construct a function on `UReal`s of one argument.
+    
+    `f` is the function to compute and `df` its derivative.
+    */
     template<typename Real>
-    UUnary<Real> uunary(const std::function<const Real &(const Real &)> &f,
-                        const std::function<const Real &(const Real &)> &df) {
+    UUnary<Real> uunary(const Unary<Real> &f, const Unary<Real> &df) {
         return [f, df](const UReal<Real> &x) {
             return unary(x, f(x.n()), df(x.n()));
         };
     }
     
+    /*!
+    \brief Construct a function on `UReal`s of two arguments.
+    
+    `f` is the function to compute, `dfdx` its derivative respect to the first
+    argument and `dfdy` respect to the second.
+    */
     template<typename Real>
     UBinary<Real>
-    ubinary(const std::function<Real(const Real &, const Real &)> &f,
-            const std::function<Real(const Real &, const Real &)> &dfdx,
-            const std::function<Real(const Real &, const Real &)> &dfdy) {
+    ubinary(const Binary<Real> &f,
+            const Binary<Real> &dfdx, const Binary<Real> &dfdy) {
         return [f, dfdx, dfdy](const UReal<Real> &x, const UReal<Real> &y) {
             const Real &xn = x.n();
             const Real &yn = y.n();
@@ -57,19 +117,31 @@ namespace uncertainties {
         };
     }
     
-    namespace internal {
-        template<typename Real>
-        constexpr Real default_step() {
-            using std::sqrt;
-            return sqrt(std::numeric_limits<Real>::epsilon());
-        };
-    }
+    /*!
+    \brief Default step for forward difference derivatives.
+    */
+    template<typename Real>
+    constexpr Real default_step() {
+        using std::sqrt;
+        return sqrt(std::numeric_limits<Real>::epsilon());
+    };
     
+    /*!
+    \brief Construct a function on `UReal`s of one argument.
+    
+    `f` is the function to compute. The derivative is computed with a forward
+    difference, using `astep` and `rstep` in this way:
+    
+    \f{align*}{
+    s &= \mathrm{astep} + |f(x)| \cdot \mathrm{rstep} \\
+    f'(x) &= \frac {f(x + s) - f(x)} {s}
+    \f}
+    */
     template<typename Real>
     UUnary<Real>
-    uunary(const std::function<Real(const Real &)> &f,
-           const Real &astep=internal::default_step<Real>(),
-           const Real &rstep=internal::default_step<Real>()) {
+    uunary(const Unary<Real> &f,
+           const Real &astep=default_step<Real>(),
+           const Real &rstep=default_step<Real>()) {
         return [f, rstep, astep](const UReal<Real> &x) {
             const Real &mu = x.n();
             const Real fmu = f(mu);
@@ -80,11 +152,25 @@ namespace uncertainties {
         };
     }
     
+    /*!
+    \brief Construct a function on `UReal`s of two arguments.
+    
+    `f` is the function to compute. The derivatives are computed with a forward
+    difference, using `astep` and `rstep` in this way:
+    
+    \f{align*}{
+    s &= \mathrm{astep} + |f(x, y)| \cdot \mathrm{rstep} \\
+    \frac {\partial f} {\partial x} (x, y)
+    &= \frac {f(x + s, y) - f(x, y)} {s} \\
+    \frac {\partial f} {\partial y} (x, y)
+    &= \frac {f(x, y + s) - f(x, y)} {s}
+    \f}
+    */
     template<typename Real>
     UBinary<Real>
-    ubinary(const std::function<Real(const Real &, const Real &)> &f,
-            const Real &astep=internal::default_step<Real>(),
-            const Real &rstep=internal::default_step<Real>()) {
+    ubinary(const Binary<Real> &f,
+            const Real &astep=default_step<Real>(),
+            const Real &rstep=default_step<Real>()) {
         return [f, rstep, astep](const UReal<Real> &x, const UReal<Real> &y) {
             const Real &xn = x.n();
             const Real &yn = y.n();

@@ -130,23 +130,20 @@ namespace uncertainties {
     \brief Construct a function on `UReal`s of one argument.
     
     `f` is the function to compute. The derivative is computed with a forward
-    difference, using `astep` and `rstep` in this way:
+    difference with step `step`:
     
     \f{align*}{
-    s &= \mathrm{astep} + |f(x)| \cdot \mathrm{rstep} \\
-    f'(x) &= \frac {f(x + s) - f(x)} {s}
+    f'(x) &= \frac {f(x + \mathrm{step}) - f(x)} {\mathrm{step}}
     \f}
     */
     template<typename Real>
     UUnary<Real>
     uunary(const Unary<Real> &f,
-           const Real &astep=default_step<Real>(),
-           const Real &rstep=default_step<Real>()) {
-        return [f, rstep, astep](const UReal<Real> &x) {
+           const Real &step=default_step<Real>()) {
+        return [f, step](const UReal<Real> &x) {
             const Real &mu = x.n();
             const Real fmu = f(mu);
             using std::abs;
-            const Real step = abs(fmu) * rstep + astep;
             const Real dx = (f(mu + step) - fmu) / step;
             return unary(x, fmu, dx);
         };
@@ -156,27 +153,24 @@ namespace uncertainties {
     \brief Construct a function on `UReal`s of two arguments.
     
     `f` is the function to compute. The derivatives are computed with a forward
-    difference, using `astep` and `rstep` in this way:
+    difference with step `step`:
     
     \f{align*}{
-    s &= \mathrm{astep} + |f(x, y)| \cdot \mathrm{rstep} \\
     \frac {\partial f} {\partial x} (x, y)
-    &= \frac {f(x + s, y) - f(x, y)} {s} \\
+    &= \frac {f(x + \mathrm{step}, y) - f(x, y)} {\mathrm{step}} \\
     \frac {\partial f} {\partial y} (x, y)
-    &= \frac {f(x, y + s) - f(x, y)} {s}
+    &= \frac {f(x, y + \mathrm{step}) - f(x, y)} {\mathrm{step}}
     \f}
     */
     template<typename Real>
     UBinary<Real>
     ubinary(const Binary<Real> &f,
-            const Real &astep=default_step<Real>(),
-            const Real &rstep=default_step<Real>()) {
-        return [f, rstep, astep](const UReal<Real> &x, const UReal<Real> &y) {
+            const Real &step=default_step<Real>()) {
+        return [f, step](const UReal<Real> &x, const UReal<Real> &y) {
             const Real &xn = x.n();
             const Real &yn = y.n();
             const Real fn = f(xn, yn);
             using std::abs;
-            const Real step = abs(fn) * rstep + astep;
             const Real dfdx = (f(xn + step, yn) - fn) / step;
             const Real dfdy = (f(xn, yn + step) - fn) / step;
             return binary(x, y, fn, dfdx, dfdy);

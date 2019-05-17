@@ -6,3 +6,5 @@ not close to the singularity and warn the user on cerr.
 Second order propagation.
 
 Improve default numerical derivative algorithm.
+
+Overload `std::numeric_limits`.

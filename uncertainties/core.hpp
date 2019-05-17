@@ -45,6 +45,14 @@ namespace uncertainties {
     template<typename Real>
     class UReal;
     
+    enum class Prop {
+        est,
+        mom
+    };
+    
+    template<typename Real, Prop prop>
+    class UReal2;
+    
     /*!
     \brief For a normal number, `nom` just returns the number.
     */

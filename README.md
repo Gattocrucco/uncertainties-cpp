@@ -15,7 +15,9 @@ of the python package [uncertainties](https://github.com/lebigot/uncertainties)
 ## Installation
 
 It is a header library so there is no need to compile and install a binary.
-Place the directory `uncertainties` in a place of your choice (possibly
+Download the code from
+[github](https://github.com/Gattocrucco/uncertainties-cpp),
+place the directory `uncertainties` in a place of your choice (possibly
 alongside your code) and make sure to include the special header
 `uncertainties/impl.hpp` in one (and only one) of your source files.
 
@@ -61,7 +63,9 @@ between the real and imaginary parts.
 
 ## Documentation
 
-Use `doxygen` to generate the documentation in html format.
+The documentation is
+[here](http://www.giacomopetrillo.com/software/uncertainties-cpp/doc/html). Use
+`doxygen` in the `doc` directory to generate the documentation.
 
 ## Tests
 

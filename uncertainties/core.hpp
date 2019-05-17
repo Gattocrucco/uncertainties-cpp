@@ -74,6 +74,8 @@ namespace uncertainties {
     description in `io.hpp` for details.
     
     `sep` is the string put between the mean and the standard deviation.
+    
+    \throws std::invalid_argument if `errdig < 1.0f`.
     */
     template<typename Number>
     std::string format(const Number &x,

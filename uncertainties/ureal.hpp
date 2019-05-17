@@ -341,8 +341,10 @@ namespace uncertainties {
         \brief Construct a new independent variable with mean `n` and standard
         deviation `s`.
         
-        Throws `std::invalid_argument` if `s < 0`. Using this constructor is the
-        only way to generate a new independent variable id.
+        Using this constructor is the only way to generate a new independent
+        variable id.
+        
+        \throws std::invalid_argument if `s < 0`. 
         */
         UReal(const Real n, const Real s):
         mu {std::move(n)}, sdev {std::move(s)}, id {++internal::last_id} {

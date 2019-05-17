@@ -21,7 +21,7 @@
 #define UNCERTAINTIES_UREALS_HPP_61EB1909
 
 /*! \file
-\brief Defines function `ureals` to generate a list of correlated variables.
+\brief Defines the function `ureals` to generate a list of correlated variables.
 
 The [Eigen](http://eigen.tuxfamily.org) header library is required to use
 this header.
@@ -41,9 +41,32 @@ namespace uncertainties {
     \brief Generates a sequence of correlated variables given a covariance
     matrix.
     
+    `mu` is the vector of means, `cov` is the covariance matrix in row-major
+    or column-major ordering. Returns a vector of type `OutVector` containing
+    the `UReal`s.
+    
+    You will have to specify explicitly `OutVector` when using the function:
+    
+    ~~~cpp
+    namespace unc = uncertainties;
+    // define `mu` and `cov`...
+    std::vector<unc::udouble> x = unc::ureals<std::vector<unc::udouble>>(mu, cov);
+    ~~~
+    
+    \throws std::invalid_argument if the sizes of `mu` and `cov` do not match.
+    
+    `OutVector` shall be a default-constructible sequence type with the member
+    function `push_back` and the member type `value_type`.
+    `OutVector::value_type` shall be an `UReal`-like type. `InVectorA` and
+    `InVectorB` shall be sequence types with member functions `size` and
+    `operator[]`.
+    
     */
     template<typename OutVector, typename InVectorA, typename InVectorB>
     OutVector ureals(const InVectorA &mu, const InVectorB &cov) {
+        // \todo split this function internals in one function diagonalizing the
+        // matrix and one building the variables to allow for specialization
+        // respect to InVectorB and OutVector
         const std::size_t n = mu.size();
         if (n != 0 ? cov.size() % n != 0 or cov.size() / n != n : cov.size() != 0) {
             throw std::invalid_argument(
@@ -60,13 +83,14 @@ namespace uncertainties {
         using Matrix = Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>;
         using Vector = Eigen::Matrix<Real, Eigen::Dynamic, 1>;
         Matrix V(n, n);
-        // can be optimized using Eigen::Map to directly use cov.data()
+        // Eigen::Map can use directly cov.data()
+        // but then non-vector sequences would not be supported
         for (std::size_t i = 0; i < n; ++i) {
             for (std::size_t j = 0; j < n; ++j) {
                 V(i, j) = cov[n * i + j];
             }
         }
-        // will this throw if V is not self-adjoint? answer: no
+        // \todo explicitly check V is symmetric
         Eigen::SelfAdjointEigenSolver<Matrix> solver(V);
         if (solver.info() != Eigen::Success) {
             throw std::runtime_error(
@@ -76,6 +100,8 @@ namespace uncertainties {
         Matrix U = solver.eigenvectors();
         Vector var = solver.eigenvalues();
         // the following can be optimized by using UReal internals
+        // but using the generic algorithm will allow to change implementation
+        // or add other uncertainty-propagating types
         OutVector x;
         for (std::size_t i = 0; i < n; ++i) {
             const Real v = var(i);

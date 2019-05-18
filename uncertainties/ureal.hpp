@@ -454,12 +454,12 @@ namespace uncertainties {
         }
         
         /*!
-        \brief Copy the uncertainty to another variable, keeping correlations.
+        \brief Make a copy of `x` with different mean, keeping correlations.
         
         The result is a variable which is identical to `x` apart from the mean
         which is set to `n`.
         */
-        friend UReal<Real> copy_unc(const Real n, const UReal<Real> &x) {
+        friend UReal<Real> change_nom(const UReal<Real> &x, const Real n) {
             UReal<Real> y = x;
             y.mu = std::move(n);
             return y;

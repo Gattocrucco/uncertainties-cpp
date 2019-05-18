@@ -2,7 +2,7 @@ CPP = c++
 CFLAGS = -std=c++11 -g -I..
 LDFLAGS = -lc++
 
-tests = urealhpp iohpp stathpp  mathhpp urealshpp functionshpp generic format ureals math mpfrformat mpfrmath mpfrureals
+tests = urealhpp iohpp stathpp  mathhpp urealshpp functionshpp ureal2hpp generic format ureals math mpfrformat mpfrmath mpfrureals
 benchmarks = fillvector accumulate smallureals
 
 programs = $(tests) $(benchmarks)
@@ -22,7 +22,7 @@ $(run_tests) $(run_benchmarks): run_%: %
 
 $(programs): %: %.cpp.o uncertainties.cpp.o
 	$(CPP) $(CFLAGS) $(LDFLAGS) -o $@ $^
-uncertainties.cpp.o: uncertainties.cpp ../uncertainties/*.hpp
+uncertainties.cpp.o: uncertainties.cpp ../uncertainties/impl.hpp ../uncertainties/core.hpp
 	$(CPP) $(CFLAGS) -c -o $@ $<
 $(objects): %.cpp.o: %.cpp ../uncertainties/*.hpp
 	$(CPP) $(CFLAGS) -c -o $@ $<

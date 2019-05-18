@@ -6,6 +6,7 @@
 !uncertainties
 !test
 !doc
+!dev
 
 # macOS
 .DS_Store

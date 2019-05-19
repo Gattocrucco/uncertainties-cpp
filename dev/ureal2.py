@@ -1,7 +1,14 @@
 from sympy.combinatorics.partitions import IntegerPartition
+from sympy.combinatorics import Permutation
 import copy
+import numpy as np
+from fractions import Fraction
+from collections import Counter
 
 indices = ('i', 'j', 'k', 'l', 'm', 'n', 'o', 'p')
+
+def isnum(x):
+    return isinstance(x, int) or isinstance(x, Fraction)
 
 def gen_index_perm(vlist, rank, indices, indices_bags):
     #ind = ' ' * 4 * len(indices)
@@ -48,7 +55,7 @@ class V:
             return self._rank < d._rank or self._rank == d._rank and self._indices < d._indices
         elif isinstance(d, D):
             return False
-        elif isinstance(d, int):
+        elif isnum(d):
             return False
         else:
             raise TypeError("'<' not supported between instances of '{}' and '{}'".format(D, d.__class__))
@@ -96,7 +103,7 @@ class D:
             return self._var < d._var or self._var == d._var and self._rank < d._rank or self._rank == d._rank and self._indices < d._indices
         elif isinstance(d, V):
             return True
-        elif isinstance(d, int):
+        elif isnum(d):
             return False
         else:
             raise TypeError("'<' not supported between instances of '{}' and '{}'".format(D, d.__class__))
@@ -142,29 +149,31 @@ class Mult(Reductor):
     def __repr__(self):
         return ' '.join('(' + x.__repr__() + ')' if isinstance(x, Reductor) else x.__repr__() for x in self._list)
     
-    def simplify(self):
-        if any(isinstance(x, Sum) and not x._list for x in self._list):
-            self._list = []
-        return self
-    
     def reduce(self):
         numbers = []
         l = []
         for obj in self._list:
-            if isinstance(obj, int):
+            if isnum(obj):
                 numbers.append(obj)
             else:
                 l.append(obj)
         p = 1
         for n in numbers:
             p *= n
+        if int(p) == p:
+            p = int(p)
         if p == 1:
             self._list = l
         elif p == 0:
-            self._list = []
+            return 0
         else:
             self._list = [p] + l
-        return self
+        if len(self._list) > 1:
+            return self
+        elif len(self._list) == 1:
+            return self._list[0]
+        else:
+            return 1
     
     def expand(self):
         for i in range(len(self._list)):
@@ -194,29 +203,87 @@ class Mult(Reductor):
             i += d._rank
         assert(i == Vobj._rank)
         return self
+    
+    def split_D(self):
+        Dobjs = []
+        other = []
+        for obj in self._list:
+            if isinstance(obj, D):
+                Dobjs.append(obj)
+            else:
+                other.append(obj)
+        if not Dobjs:
+            return self
+        indices = ()
+        for obj in Dobjs:
+            indices += obj._indices
+        pfirst = Permutation(list(range(len(indices))))
+        p = pfirst
+        terms = []
+        while True:
+            l = copy.deepcopy(Dobjs)
+            i = 0
+            for d in l:
+                d._indices = tuple(indices[(i + j)^p] for j in range(len(d._indices)))
+                i += len(d._indices)
+            terms.append(Mult(*l))
+            p += 1
+            if p == pfirst:
+                break
+        self._list = other + [Fraction(1, len(terms)), Sum(*terms)]
+        return self
+    
+    def normalize_D(self):
+        Dobjs = []
+        for obj in self._list:
+            if isinstance(obj, D):
+                Dobjs.append(obj)
+        if not Dobjs:
+            return self
+        indices = ()
+        r2s_indices = ()
+        for d in Dobjs:
+            indices += obj._indices
+            if d._rank == 2 and d._indices and d._indices[0] == d._indices[1]:
+                r2s_indices += d._indices
+        count = Counter(indices)
+        perm = tuple(range(len(set(indices))))
+        
+        
+        other_indices = indices - r2s_indices
+        p = tuple(r2s_indices) + tuple(other_indices)
+        l = [None] * len(p)
+        for i in range(len(p)):
+            l[p[i]] = i
+        for d in Dobjs:
+            d._indices = tuple(l[i] for i in d._indices)
+        return self
 
 class Sum(Reductor):
     def __repr__(self, sep=''):
         return f' + {sep}'.join('(' + x.__repr__() + ')' if isinstance(x, Sum) else x.__repr__() for x in self._list)
         
-    def simplify(self):
-        self._list = list(filter(lambda x: not isinstance(x, Mult) or x._list, self._list))
-        return self
-    
     def reduce(self):
         numbers = []
         l = []
         for obj in self._list:
-            if isinstance(obj, int):
+            if isnum(obj):
                 numbers.append(obj)
             else:
                 l.append(obj)
         s = sum(numbers)
+        if int(s) == s:
+            s = int(s)
         if s == 0:
             self._list = l
         else:
             self._list = [s] + l
-        return self
+        if len(self._list) > 1:
+            return self
+        elif len(self._list) == 1:
+            return self._list[0]
+        else:
+            return 1
     
     def harvest(self):
         grouped_terms = []
@@ -256,10 +323,24 @@ def gen_corr(*vars):
     e = e.recursive('index_V')
     e = e.recursive('expand')
     e = e.recursive('concat')
+
     e = e.recursive('index_D')
     e = e.recursive('sort_indices')
     e = e.recursive('sort')
     e = e.recursive('harvest')
     e = e.recursive('concat')
     e = e.recursive('reduce')
+    
+#    e = e.recursive('normalize_D')
+
+    # e = e.recursive('split_D')
+    # e = e.recursive('reduce')
+    # e = e.recursive('sort_indices')
+    # e = e.recursive('sort')
+    # e = e.recursive('harvest')
+    # e = e.recursive('concat')
+    # e = e.recursive('reduce')
+    # e = e.recursive('expand')
+    # e = e.recursive('concat')
+    # e = e.recursive('reduce')
     return e

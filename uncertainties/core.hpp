@@ -47,7 +47,7 @@ namespace uncertainties {
     
     enum class Prop {
         est,
-        mom
+        mean
     };
     
     template<typename Real, Prop prop>

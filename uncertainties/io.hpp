@@ -195,6 +195,12 @@ namespace uncertainties {
                                           const UReal<Real> &x) {
         return stream << format(x);
     }
+    
+    template<typename Real, Prop prop, typename CharT>
+    std::basic_ostream<CharT> &operator<<(std::basic_ostream<CharT> &stream,
+                                          const UReal2<Real, prop> &x) {
+        return stream << format(x);
+    }
 }
 
 #endif /* end of include guard: UNCERTAINTIES_IO_HPP_6DDCDE20 */

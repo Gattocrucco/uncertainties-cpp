@@ -3,7 +3,7 @@ from sympy.combinatorics import Permutation
 import copy
 import numpy as np
 from fractions import Fraction
-from collections import Counter
+from collections import Counter, OrderedDict
 
 indices = ('i', 'j', 'k', 'l', 'm', 'n', 'o', 'p')
 
@@ -116,12 +116,15 @@ class Reductor:
         self._list = list(args)
 
     def recursive(self, method):
+        # print(f'recursive {method} on {self}')
         for i in range(len(self._list)):
             if hasattr(self._list[i], 'recursive'):
                 self._list[i] = self._list[i].recursive(method)
-            if hasattr(self._list[i], method):
+            elif hasattr(self._list[i], method):
+                # print(f'    {method} on {self._list[i]}')
                 self._list[i] = getattr(self._list[i], method)()
         if hasattr(self, method):
+            # print(f'    {method} on {self}')
             self = getattr(self, method)()
         return self
     
@@ -142,9 +145,12 @@ class Reductor:
             pass
         return self
     
+    def __lt__(self, obj):
+        return isinstance(obj, self.__class__) and self._list[::-1] < obj._list[::-1]
+    
     def __eq__(self, obj):
         return isinstance(obj, self.__class__) and len(self._list) == len(obj._list) and all(x == y for x, y in zip(self._list, obj._list))
-
+    
 class Mult(Reductor):
     def __repr__(self):
         return ' '.join('(' + x.__repr__() + ')' if isinstance(x, Reductor) else x.__repr__() for x in self._list)
@@ -174,6 +180,12 @@ class Mult(Reductor):
             return self._list[0]
         else:
             return 1
+    
+    def gen_V(self):
+        rank = sum(map(lambda x: x._rank, filter(lambda x: isinstance(x, D), self._list)))
+        if rank:
+            self._list.append(V(rank))
+        return self
     
     def expand(self):
         for i in range(len(self._list)):
@@ -245,19 +257,42 @@ class Mult(Reductor):
         for d in Dobjs:
             indices += obj._indices
             if d._rank == 2 and d._indices and d._indices[0] == d._indices[1]:
-                r2s_indices += d._indices
+                r2s_indices += d._indices[:1]
+        if not r2s_indices:
+            return self
+        # print(f'normalize_D on {self}')
         count = Counter(indices)
-        perm = tuple(range(len(set(indices))))
-        
-        
-        other_indices = indices - r2s_indices
-        p = tuple(r2s_indices) + tuple(other_indices)
-        l = [None] * len(p)
-        for i in range(len(p)):
-            l[p[i]] = i
+        count_count = Counter(sorted(count.values()))
+        p = list(range(len(set(indices))))
+        assert(set(indices) == set(range(len(set(indices)))))
+        for c, cc in filter(lambda ccc: ccc[1] > 1, count_count.items()):
+            swappable_indices = set(filter(lambda i: count[i] == c, indices))
+            # print(f'    can swap {swappable_indices}')
+            assert(len(swappable_indices) > 1)
+            first_indices = tuple(filter(lambda i: i in swappable_indices, OrderedDict(zip(r2s_indices, (None,) *len(r2s_indices)))))
+            second_indices = tuple(filter(lambda i: i in swappable_indices and not i in r2s_indices, OrderedDict(zip(indices, (None,) *len(indices)))))
+            old_indices = first_indices + second_indices
+            new_indices = sorted(swappable_indices)
+            for i, j in zip(old_indices, new_indices):
+                # print(f'        send {i} -> {j}')
+                p[i] = j
+        # print(f'    final perm is {p}')
+        assert(set(p) == set(indices))
         for d in Dobjs:
-            d._indices = tuple(l[i] for i in d._indices)
+            d._indices = tuple(p[i] for i in d._indices)
         return self
+
+def stripfactor(x):
+    if isinstance(x, Mult) and x._list and isnum(x._list[0]):
+        return Mult(*x._list[1:])
+    else:
+        return x
+
+def getfactor(x):
+    if isinstance(x, Mult) and x._list and isnum(x._list[0]):
+        return x._list[0]
+    else:
+        return 1
 
 class Sum(Reductor):
     def __repr__(self, sep=''):
@@ -283,47 +318,69 @@ class Sum(Reductor):
         elif len(self._list) == 1:
             return self._list[0]
         else:
-            return 1
+            return 0
     
     def harvest(self):
-        grouped_terms = []
+        # NON FUNZIONA!
+        terms = []
+        counts = []
         while self._list:
-            for l in grouped_terms:
-                if l and l[0] == self._list[-1]:
-                    l.append(self._list.pop())
+            obj = stripfactor(self._list[-1])
+            count = getfactor(self._list[-1])
+            for i in range(len(terms)):
+                if terms[i] == obj:
+                    counts[i] += count
                     break
             else:
-                grouped_terms.append([self._list.pop()])
-        self._list = [Mult(len(l), l[0]) if len(l) > 1 else l[0] for l in reversed(grouped_terms)]
+                terms.append(obj)
+                counts.append(count)
+            self._list.pop()
+        self._list = []
+        # print(grouped_terms)
+        for i in reversed(range(len(terms))):
+            self._list.append(Mult(counts[i], terms[i]) if counts[i] != 1 else terms[i])
         return self
 
-def gen_terms(terms, vars, l, n_2, n_1):
-    if n_2 == n_1 == 0:
-        terms.append(Mult(*(D(l[i], vars[i]) for i in range(len(l)))))
-    else:
-        if n_1 > 0: gen_terms(terms, vars, l + (1,), n_2, n_1 - 1)
-        if n_2 > 0: gen_terms(terms, vars, l + (2,), n_2 - 1, n_1)
-
-def gen_corr_base_expr(*vars):
-    terms = []
-    for v_rank in range(len(vars), 1 + 2 * len(vars)):
-        v_terms = []
-        for n_2 in range(1 + v_rank // 2):
-            n_1 = len(vars) - n_2
-            if n_1 + 2 * n_2 == v_rank:
-                gen_terms(v_terms, vars, (), n_2, n_1)
-        if v_terms:
-            terms.append(Mult(Sum(*v_terms), V(v_rank)))
-    return Sum(*terms)
+# def gen_terms(terms, vars, l, n_2, n_1):
+#     if n_2 == n_1 == 0:
+#         terms.append(Mult(*(D(l[i], vars[i]) for i in range(len(l)))))
+#     else:
+#         if n_1 > 0: gen_terms(terms, vars, l + (1,), n_2, n_1 - 1)
+#         if n_2 > 0: gen_terms(terms, vars, l + (2,), n_2 - 1, n_1)
+#
+# def gen_corr_base_expr(*vars):
+#     terms = []
+#     for v_rank in range(len(vars), 1 + 2 * len(vars)):
+#         v_terms = []
+#         for n_2 in range(1 + v_rank // 2):
+#             n_1 = len(vars) - n_2
+#             if n_1 + 2 * n_2 == v_rank:
+#                 gen_terms(v_terms, vars, (), n_2, n_1)
+#         if v_terms:
+#             terms.append(Mult(Sum(*v_terms), V(v_rank)))
+#     return Sum(*terms)
 
 def gen_corr(*vars):
-    e = gen_corr_base_expr(*vars)
+    # e = gen_corr_base_expr(*vars)
+    e = Mult(*[Sum(D(1, v), D(2, v)) for v in vars])
+    
+    # do multiplication
+    e = e.recursive('expand')
+    e = e.recursive('concat')
+    
+    # group equal terms in case there are repeated variables
     e = e.recursive('sort')
     e = e.recursive('harvest')
+    
+    # put V tensors
+    e = e.recursive('gen_V')
+    
+    # split summations into diagonal and off-diagonal
     e = e.recursive('index_V')
     e = e.recursive('expand')
     e = e.recursive('concat')
-
+    
+    # put indices on D tensors
     e = e.recursive('index_D')
     e = e.recursive('sort_indices')
     e = e.recursive('sort')
@@ -331,16 +388,11 @@ def gen_corr(*vars):
     e = e.recursive('concat')
     e = e.recursive('reduce')
     
-#    e = e.recursive('normalize_D')
+    # normalize usage of mute indices to spot equal terms
+    e = e.recursive('normalize_D')
+    e = e.recursive('sort_indices')
+    e = e.recursive('sort')
+    e = e.recursive('harvest')
+    e = e.recursive('concat')
 
-    # e = e.recursive('split_D')
-    # e = e.recursive('reduce')
-    # e = e.recursive('sort_indices')
-    # e = e.recursive('sort')
-    # e = e.recursive('harvest')
-    # e = e.recursive('concat')
-    # e = e.recursive('reduce')
-    # e = e.recursive('expand')
-    # e = e.recursive('concat')
-    # e = e.recursive('reduce')
     return e

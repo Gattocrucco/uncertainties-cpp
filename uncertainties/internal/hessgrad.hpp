@@ -252,9 +252,11 @@ namespace uncertainties {
                         }
                         return true;
                     }
-                    if (it1.itdhess != it2.itdhess) {
-                        throw std::runtime_error("TriIt::operator!=: itdhess1 != itdhess2");
-                    }
+                    // do not check because itdhess can not be set to nullptr
+                    // so the end interator has a random itdhess
+                    // if (it1.itdhess != it2.itdhess) {
+                    //     throw std::runtime_error("TriIt::operator!=: itdhess1 != itdhess2");
+                    // }
                     return false;
                 }
             };

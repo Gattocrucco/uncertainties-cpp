@@ -64,14 +64,14 @@ namespace uncertainties {
         }
         
         inline bool isindep() const noexcept {
-            return this->hg.at_most_one_grad();
+            return this->hg.size() <= 1;
         }
 
         Id indepid() const noexcept {
             if (not this->isindep()) {
                 return invalid_id;
             } else if (this->hg.size() == 1) {
-                return this->hg.dbegin()->first;
+                return this->hg.cdbegin()->first;
             } else {
                 return 0;
             }
@@ -142,21 +142,15 @@ namespace uncertainties {
         friend class UReal2;
         
         template<typename OtherReal>
-        operator UReal2<OtherReal, prop>() const {
-            UReal2<OtherReal, prop> x;
-            x.hg = this->hg;
-            x.mu = this->mu;
-            std::copy(this->mom.begin(), this->mom.end(), x.mom.begin());
-            x.mom_cached = this->mom_cached;
-            return x;
+        inline operator UReal2<OtherReal, prop>() const {
+            return UReal2<OtherReal, prop>(*this);
         }
         
-        template<Prop other_prop>
-        explicit UReal2(const UReal2<Real, other_prop> &x) {
-            this->hg = x.hg;
+        template<typename OtherReal, Prop other_prop>
+        explicit UReal2(const UReal2<OtherReal, other_prop> &x):
+        hg {x.hg}, mom_cached {x.mom_cached} {
             this->mu = x.mu;
             std::copy(x.mom.begin(), x.mom.end(), this->mom.begin());
-            this->mom_cached = x.mom_cached;
         }
         
         friend Real cov(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {

@@ -50,17 +50,15 @@ namespace uncertainties {
                 M7P<Real> mom;
             private:
                 std::map<Id, Real> row;
-                friend class HessGrad<Real>;
+                
+                template<typename>
+                friend class HessGrad;
             };
         
         private:
             std::map<Id, Diag> nodes;
         
         public:
-            inline bool at_most_one_grad() const noexcept {
-                return this->nodes.size() == 0 || (this->nodes.size() == 1 && this->nodes.begin()->row.size() == 0);
-            }
-        
             inline typename std::map<Id, Diag>::size_type size() const noexcept {
                 return this->nodes.size();
             }
@@ -151,6 +149,9 @@ namespace uncertainties {
                 }
                 inline decltype(*it) operator*() const noexcept {
                     return *it;
+                }
+                inline decltype(it) operator->() const noexcept {
+                    return it;
                 }
                 friend inline bool operator!=(const ConstDiagIt &it1, const ConstDiagIt &it2) {
                     return it1.it != it2.it;
@@ -294,8 +295,8 @@ namespace uncertainties {
                     node.grad = diag.grad;
                     node.dhess = diag.dhess;
                     node.mom = mom;
-                    for (const auto &it2 : it.second.dhess) {
-                        node.dhess[it2.first] = it2.second;
+                    for (const auto &it2 : it.second.row) {
+                        node.row[it2.first] = it2.second;
                     }
                 }
                 return hg;

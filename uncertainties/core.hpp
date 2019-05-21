@@ -26,6 +26,8 @@
 
 #include <string>
 #include <atomic>
+#include <vector>
+#include <utility>
 
 namespace uncertainties {
     /*!
@@ -92,6 +94,36 @@ namespace uncertainties {
 
     template<typename OutVector, typename InVectorA, typename InVectorB>
     OutVector ureals(const InVectorA &mu, const InVectorB &cov);
+    
+    namespace internal {
+        class Lazy {
+        public:
+            struct Token {
+            private:
+                friend class Lazy;
+                int token = -1;
+            public:
+                int count = 1;
+            };
+        private:
+            std::vector<std::pair<Token, bool>> stack {{Token(), false}};
+        public:
+            Token push(const bool);
+            void pop(Token);
+            bool read() const noexcept;
+        };
+        
+        extern thread_local Lazy lazy;
+    }
+    
+    inline bool lazyprop() noexcept {
+        return internal::lazy.read();
+    }
+    
+#define UNCERTAINTIES_LAZYPROP(ENABLE) \
+    for (auto token = uncertainties::internal::lazy.push(ENABLE); \
+         token.count--; \
+         uncertainties::internal::lazy.pop(token))
 }
 
 #endif /* end of include guard: UNCERTAINTIES_CORE_HPP_D4C14D73 */

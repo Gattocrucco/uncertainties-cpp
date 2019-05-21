@@ -7,9 +7,6 @@
 
 namespace unc = uncertainties;
 
-constexpr double n = 3;
-constexpr double s = 2;
-
 template<typename Number>
 void check(const Number &x) {
     assert(x.s() == 2);
@@ -32,6 +29,4 @@ int main() {
     check(v);
     unc::udouble2e x1 = +x;
     check(x1);
-    x1 = -x1;
-    std::cout << x1 << "\n";
 }

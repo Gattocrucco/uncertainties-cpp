@@ -26,14 +26,20 @@ namespace uncertainties {
     namespace internal {
         template<typename Real>
         Real compute_mom(const HessGrad<Real> &hg, const int n) {
-            if (n < 2 or n > 4) {
-                throw std::invalid_argument("uncertainties::internal::compute_mom: n not in [2, 4]");
+            if (n < 1 or n > 4) {
+                throw std::invalid_argument("uncertainties::internal::compute_mom: n not in [1, 4]");
             }
             using ConstDiagIt = typename HessGrad<Real>::ConstDiagIt;
             using ConstTriIt = typename HessGrad<Real>::ConstTriIt;
             using Diag = typename HessGrad<Real>::Diag;
             Real m(0);
-            if (n == 2) {
+            if (n == 1) {
+                const ConstDiagIt dend = hg.cdend();
+                for (ConstDiagIt it = hg.cdbegin(); it != dend; ++it) {
+                    const Diag &d = (*it).second;
+                    m += d.hhess * v<2>(d.mom);
+                }
+            } else if (n == 2) {
                 // formula:
                 // C[y^2] =
                 // G_i^2 V_{ii} +
@@ -46,7 +52,8 @@ namespace uncertainties {
                     m += 2 * d.grad * d.hhess * v<3>(d.mom);
                     m += d.hhess * d.hhess * v<4>(d.mom);
                 }
-                for (ConstTriIt it = hg.ctbegin(); it != hg.ctend(); ++it) {
+                const ConstTriIt tend = hg.ctend();
+                for (ConstTriIt it = hg.ctbegin(); it != tend; ++it) {
                     const Diag &d1 = it.diag1();
                     const Diag &d2 = it.diag2();
                     const Real &hhess = *it;

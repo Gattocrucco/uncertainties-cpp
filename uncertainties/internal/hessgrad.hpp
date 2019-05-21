@@ -63,7 +63,7 @@ namespace uncertainties {
                 return this->nodes.size();
             }
         
-            inline const Diag &diag(const Id id) const noexcept {
+            inline const Diag &diag(const Id id) const {
                 return this->nodes.at(id);
             }
         
@@ -125,62 +125,25 @@ namespace uncertainties {
                 }
                 return *t;
             }
-        
-            class DiagIt {
-            private:
-                typename std::map<Id, Diag>::iterator it;
             
-            public:                
-                DiagIt(const typename std::map<Id, Diag>::iterator &i): it {i} {
-                    ;
-                }
-                inline void operator++() noexcept {
-                    ++it;
-                }
-                inline std::pair<Id, Diag> &operator*() const noexcept {
-                    return *it;
-                }
-                friend inline bool operator!=(const DiagIt &it1, const DiagIt &it2) {
-                    return it1.it != it2.it;
-                }
-            };
-
-            DiagIt dbegin() {
-                return DiagIt(nodes.begin());
+            using DiagIt = typename std::map<Id, Diag>::iterator;
+        
+            inline DiagIt dbegin() {
+                return nodes.begin();
             }
         
-            DiagIt dend() {
-                return DiagIt(nodes.end());
+            inline DiagIt dend() {
+                return nodes.end();
             }
-
-            class ConstDiagIt {
-            private:
-                typename std::map<Id, Diag>::const_iterator it;
             
-            public:
-                ConstDiagIt(const typename std::map<Id, Diag>::const_iterator &i): it {i} {
-                    ;
-                }
-                inline void operator++() noexcept {
-                    ++it;
-                }
-                inline decltype(*it) operator*() const noexcept {
-                    return *it;
-                }
-                inline decltype(it) operator->() const noexcept {
-                    return it;
-                }
-                friend inline bool operator!=(const ConstDiagIt &it1, const ConstDiagIt &it2) {
-                    return it1.it != it2.it;
-                }
-            };
-        
-            ConstDiagIt cdbegin() const {
-                return ConstDiagIt(nodes.cbegin());
+            using ConstDiagIt = typename std::map<Id, Diag>::const_iterator;
+
+            inline ConstDiagIt cdbegin() const {
+                return nodes.cbegin();
             }
         
-            ConstDiagIt cdend() const {
-                return ConstDiagIt(nodes.cend());
+            inline ConstDiagIt cdend() const {
+                return nodes.cend();
             }
 
             template<typename DiagIterator, typename RealIterator>

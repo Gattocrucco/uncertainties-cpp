@@ -29,10 +29,7 @@ This header contains non-template code to be compiled once.
 #include <string>
 #include <cstdlib>
 #include <atomic>
-#include <random>
 #include <vector>
-#include <utility>
-#include <stdexcept>
 
 #include "core.hpp"
 
@@ -57,30 +54,19 @@ namespace uncertainties {
             return (e > 0 ? "+" : "-") + std::to_string(std::abs(e));
         }
 
-        Lazy::Token Lazy::push(const bool enable) {
-            thread_local static std::random_device r;
-            thread_local static std::minstd_rand source(r());
-            Token t;
-            t.token = std::uniform_int_distribution<int>(0)(source);
-            this->stack.push_back({t, enable});
-            return t;
-        }
-        
-        void Lazy::pop(Token t) {
-            if (this->stack.size() == 1) {
-                throw std::runtime_error("uncertainties::Lazy::pop: can not pop first entry");
-            }
-            if (this->stack.back().first.token != t.token) {
-                throw std::invalid_argument("uncertainties::Lazy::pop: wrong token");
-            }
-            this->stack.pop_back();
-        }
-        
-        bool Lazy::read() const noexcept {
-            return this->stack.back().second;
-        }
-        
-        thread_local Lazy lazy;
+        thread_local std::vector<bool> stack {false};
+    }
+    
+    LazyPropSetter::LazyPropSetter(const bool enable) {
+        internal::stack.push_back(enable);
+    }
+    
+    LazyPropSetter::~LazyPropSetter() {
+        internal::stack.pop_back();
+    }
+    
+    bool lazyprop() noexcept {
+        return internal::stack.back();
     }
 }
 

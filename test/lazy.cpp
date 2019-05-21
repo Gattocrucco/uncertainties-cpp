@@ -8,9 +8,11 @@ namespace unc = uncertainties;
 void check() {
     const bool start = unc::lazyprop();
     for (int i = 0; i < 10000; ++i) {
-        UNCERTAINTIES_LAZYPROP(true) {
+        {
+            unc::LazyPropSetter set(true);
             assert(unc::lazyprop());
-            UNCERTAINTIES_LAZYPROP(false) {
+            {
+                unc::LazyPropSetter set(false);
                 assert(not unc::lazyprop());
             }
             assert(unc::lazyprop());

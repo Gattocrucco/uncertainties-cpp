@@ -24,8 +24,14 @@ int main() {
     check(x);
     const unc::udouble2m y(x);
     check(y);
-    const unc::ufloat2e z = x;
+    const unc::ufloat2e z(x);
     check(z);
     const unc::ufloat2m w(x);
     check(w);
+    const unc::udouble2e v = z;
+    check(v);
+    unc::udouble2e x1 = +x;
+    check(x1);
+    x1 = -x1;
+    std::cout << x1 << "\n";
 }

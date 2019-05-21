@@ -43,14 +43,14 @@ namespace uncertainties {
                 for (ConstDiagIt it = hg.cdbegin(); it != hg.cdend(); ++it) {
                     const Diag &d = (*it).second;
                     m += d.grad * d.grad * v<2>(d.mom);
-                    m += 2 * d.grad * d.dhess * v<3>(d.mom);
-                    m += d.dhess * d.dhess * v<4>(d.mom);
+                    m += 2 * d.grad * d.hhess * v<3>(d.mom);
+                    m += d.hhess * d.hhess * v<4>(d.mom);
                 }
                 for (ConstTriIt it = hg.ctbegin(); it != hg.ctend(); ++it) {
                     const Diag &d1 = it.diag1();
                     const Diag &d2 = it.diag2();
-                    const Real &dhess = *it;
-                    m += 2 * (d1.dhess * d2.dhess + 2 * dhess * dhess) * v<2>(d1.mom) * v<2>(d2.mom);
+                    const Real &hhess = *it;
+                    m += 2 * (d1.hhess * d2.hhess + 2 * hhess * hhess) * v<2>(d1.mom) * v<2>(d2.mom);
                 }
             }
             return m;

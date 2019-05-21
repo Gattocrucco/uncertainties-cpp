@@ -46,7 +46,7 @@ namespace uncertainties {
         public:
             struct Diag {
                 Real grad;
-                Real dhess; // 2 x second derivative
+                Real hhess; // half second derivative
                 M7P<Real> mom;
             private:
                 std::map<Id, Real> row;
@@ -70,43 +70,60 @@ namespace uncertainties {
             inline Diag &diag(const Id id) {
                 return this->nodes[id];
             }
-        
+
             const Real &tri(const Id id1, const Id id2) const {
+                if (id1 == id2) {
+                    throw std::runtime_error("tri: id1 == id2");
+                }
+                const Id minid = std::min(id1, id2);
+                const Id maxid = std::max(id1, id2);
+                auto n = this->nodes.find(minid);
+                if (n == this->nodes.end()) {
+                    throw std::runtime_error("tri_set: !n");
+                }
+                auto N = this->nodes.find(maxid);
+                if (N == this->nodes.end()) {
+                    throw std::runtime_error("tri_set: !N");
+                }
+                return n->second.row.at(maxid);
+            }
+
+            Real &tri(const Id id1, const Id id2) {
+                if (id1 == id2) {
+                    throw std::runtime_error("tri: id1 == id2");
+                }
+                const Id minid = std::min(id1, id2);
+                const Id maxid = std::max(id1, id2);
+                auto n = this->nodes.find(minid);
+                if (n == this->nodes.end()) {
+                    throw std::runtime_error("tri_set: !n");
+                }
+                auto N = this->nodes.find(maxid);
+                if (N == this->nodes.end()) {
+                    throw std::runtime_error("tri_set: !N");
+                }
+                return n->second.row[maxid];
+            }
+
+            const Real &tri_get(const Id id1, const Id id2) const {
                 if (id1 == id2) {
                     throw std::runtime_error("tri_get: id1 == id2");
                 }
                 const Id minid = std::min(id1, id2);
                 const Id maxid = std::max(id1, id2);
-                Diag *n = this->nodes.find(minid);
-                if (!n) {
+                auto n = this->nodes.find(minid);
+                if (n == this->nodes.end()) {
                     return 0;
                 }
-                Real *t = n->row.find(maxid);
-                if (!t) {
+                auto t = n->second.row.find(maxid);
+                if (t == n->second.row.end()) {
                     return 0;
                 }
-                Diag *N = this->nodes.find(maxid);
-                if (!N) {
+                auto N = this->nodes.find(maxid);
+                if (N == this->nodes.end()) {
                     throw std::runtime_error("tri_get: !N");
                 }
                 return *t;
-            }
-        
-            void tri(const Id id1, const Id id2, const Real &dhess) {
-                if (id1 == id2) {
-                    throw std::runtime_error("tri_set: id1 == id2");
-                }
-                const Id minid = std::min(id1, id2);
-                const Id maxid = std::max(id1, id2);
-                Diag *n = this->nodes.find(minid);
-                if (!n) {
-                    throw std::runtime_error("tri_set: !n");
-                }
-                Diag *N = this->nodes.find(maxid);
-                if (!N) {
-                    throw std::runtime_error("tri_set: !N");
-                }
-                n->row[maxid] = dhess;
             }
         
             class DiagIt {
@@ -172,7 +189,7 @@ namespace uncertainties {
                 DiagIterator itnmin;
                 DiagIterator itnmax;
                 const DiagIterator itnend;
-                RealIterator itdhess;
+                RealIterator ithhess;
         
                 void update_itnmax(const Id id) {
                     for (; this->itnmax->first != id; ++this->itnmax) {
@@ -185,9 +202,9 @@ namespace uncertainties {
                 void update() {
                     this->itnmax = this->itnmin;
                     if (this->itnmin != this->itnend) {
-                        this->itdhess = this->itnmin->second.row.begin();
-                        if (this->itdhess != this->itnmin->second.row.end()) {
-                            this->update_itnmax(this->itdhess->first);
+                        this->ithhess = this->itnmin->second.row.begin();
+                        if (this->ithhess != this->itnmin->second.row.end()) {
+                            this->update_itnmax(this->ithhess->first);
                         }
                     }
                 }
@@ -205,21 +222,21 @@ namespace uncertainties {
                 }
                 void operator++() {
                     if (this->itnmin != this->itnend) {
-                        if (this->itdhess == this->itnmin->second.row.end()) {
-                            throw std::runtime_error("TriIt::operator++: itdhess == end");
+                        if (this->ithhess == this->itnmin->second.row.end()) {
+                            throw std::runtime_error("TriIt::operator++: ithhess == end");
                         }
-                        ++this->itdhess;
-                        if (this->itdhess == this->itnmin->second.row.end()) {
+                        ++this->ithhess;
+                        if (this->ithhess == this->itnmin->second.row.end()) {
                             ++this->itnmin;
                             this->update();
                         }
                     }
                 }
-                decltype(itdhess->second) operator*() const {
-                    if (this->itdhess == this->itnmin->second.row.end()) {
-                        throw std::runtime_error("TriIt::operator*: itdhess == end");
+                decltype(ithhess->second) operator*() const {
+                    if (this->ithhess == this->itnmin->second.row.end()) {
+                        throw std::runtime_error("TriIt::operator*: ithhess == end");
                     }
-                    return this->itdhess->second;
+                    return this->ithhess->second;
                 }
                 Id id1() const {
                     if (this->itnmin == this->itnend) {
@@ -248,15 +265,15 @@ namespace uncertainties {
                 using ThisType = TriItTempl<DiagIterator, RealIterator>;
                 friend bool operator!=(const ThisType &it1, const ThisType &it2) {
                     if (it1.itnmin != it2.itnmin and it1.itnmax != it2.itnmax) {
-                        if (it1.itdhess == it2.itdhess) {
-                            throw std::runtime_error("TriIt::operator!=: itdhess1 == itdhess2");
+                        if (it1.ithhess == it2.ithhess) {
+                            throw std::runtime_error("TriIt::operator!=: ithhess1 == ithhess2");
                         }
                         return true;
                     }
-                    // do not check because itdhess can not be set to nullptr
-                    // so the end interator has a random itdhess
-                    // if (it1.itdhess != it2.itdhess) {
-                    //     throw std::runtime_error("TriIt::operator!=: itdhess1 != itdhess2");
+                    // do not check because ithhess can not be set to nullptr
+                    // so the end interator has a random ithhess
+                    // if (it1.ithhess != it2.ithhess) {
+                    //     throw std::runtime_error("TriIt::operator!=: ithhess1 != ithhess2");
                     // }
                     return false;
                 }
@@ -281,6 +298,92 @@ namespace uncertainties {
                 return ConstTriIt(nodes.cend(), nodes.cend());
             }
             
+            class ConstTriItNoSkip {
+            private:
+                typename std::map<Id, Diag>::const_iterator itnmin;
+                typename std::map<Id, Diag>::const_iterator itnmax;
+                const typename std::map<Id, Diag>::const_iterator itnend;
+                typename std::map<Id, Real>::const_iterator ithhess;
+                    
+            public:            
+                ConstTriItNoSkip(
+                    const typename std::map<Id, Diag>::const_iterator &nodes_begin,
+                    const typename std::map<Id, Diag>::const_iterator &nodes_end
+                ): itnend {nodes_end} {
+                    this->itnmin = nodes_begin;
+                    this->itnmax = this->itnmin;
+                    if (this->itnmax != this->itnend) {
+                        ++(this->itnmax);
+                        this->ithhess = this->itnmin->second.row.begin();
+                    }
+                }
+                void operator++() {
+                    if (this->itnmax == this->itnend) {
+                        throw std::runtime_error("ConstTriItNoSkip::operator++: itnmax == end");
+                    }
+                    ++(this->itnmax);
+                    if (this->itnmax != this->itnend) {
+                        for (; this->ithhess != this->itnmin->second.row.end(); ++(this->ithhess)) {
+                            if (this->ithhess->first >= this->itnmax->first) {
+                                break;
+                            }
+                        }
+                    } else {
+                        ++(this->itnmin);
+                        this->itnmax = this->itnmin;
+                        if (this->itnmax != this->itnend) {
+                            ++(this->itnmax);
+                            this->ithhess = this->itnmin->second.row.begin();   
+                        }
+                    }
+                }
+                decltype(ithhess->second) operator*() const {
+                    if (this->itnmax == this->itnend) {
+                        throw std::runtime_error("ConstTriItNoSkip::operator*: itnmax == end");
+                    }
+                    if (this->ithhess != this->itnmin->second.row.end() && this->ithhess->first == this->itnmax->first) {
+                        return this->ithhess->second;
+                    } else {
+                        return 0;
+                    }
+                }
+                Id id1() const {
+                    if (this->itnmin == this->itnend) {
+                        throw std::runtime_error("ConstTriItNoSkip::id1: itnmin == end");
+                    }
+                    return this->itnmin->first;
+                }
+                Id id2() const {
+                    if (this->itnmax == this->itnend) {
+                        throw std::runtime_error("ConstTriItNoSkip::id2 itnmax == end");
+                    }
+                    return this->itnmax->first;
+                }
+                const Diag &diag1() const {
+                    if (this->itnmin == this->itnend) {
+                        throw std::runtime_error("ConstTriItNoSkip::diag1: itnmin == end");
+                    }
+                    return this->itnmin->second;
+                }
+                const Diag &diag2() const {
+                    if (this->itnmax == this->itnend) {
+                        throw std::runtime_error("ConstTriItNoSkip::diag2: itnmax == end");
+                    }
+                    return this->itnmax->second;
+                }
+                inline friend bool operator!=(const ConstTriItNoSkip &it1, const ConstTriItNoSkip &it2) noexcept {
+                    return it1.itnmin != it2.itnmin and it1.itnmax != it2.itnmax;
+                }
+            };
+            
+            ConstTriItNoSkip ctnbegin() const {
+                return ConstTriItNoSkip(nodes.cbegin(), nodes.cend());
+            }
+        
+            ConstTriItNoSkip ctnend() const {
+                return ConstTriItNoSkip(nodes.cend(), nodes.cend());
+            }
+
             template<typename OtherReal>
             friend class HessGrad;
             
@@ -290,11 +393,10 @@ namespace uncertainties {
                 for (const auto &it : this->nodes) {
                     typename HessGrad<OtherReal>::Diag &node = hg.nodes[it.first];
                     const Diag &diag = it.second;
-                    M7P<OtherReal> mom(new std::array<OtherReal, 7>);
-                    std::copy(diag.mom->begin(), diag.mom->end(), mom->begin());
                     node.grad = diag.grad;
-                    node.dhess = diag.dhess;
-                    node.mom = mom;
+                    node.hhess = diag.hhess;
+                    node.mom = M7P<OtherReal>(new std::array<OtherReal, 7>);
+                    std::copy(diag.mom->begin(), diag.mom->end(), node.mom->begin());
                     for (const auto &it2 : it.second.row) {
                         node.row[it2.first] = it2.second;
                     }

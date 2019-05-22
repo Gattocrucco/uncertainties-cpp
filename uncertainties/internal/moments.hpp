@@ -20,15 +20,15 @@
 #ifndef UNCERTAINTIES_MOMENTS_HPP_D7CCD11D
 #define UNCERTAINTIES_MOMENTS_HPP_D7CCD11D
 
+#include <cassert>
+
 #include "hessgrad.hpp"
 
 namespace uncertainties {
     namespace internal {
         template<typename Real>
         Real compute_mom(const HessGrad<Real> &hg, const int n) {
-            if (n < 1 or n > 4) {
-                throw std::invalid_argument("uncertainties::internal::compute_mom: n not in [1, 4]");
-            }
+            assert(n >= 1 and n <= 2);
             using ConstDiagIt = typename HessGrad<Real>::ConstDiagIt;
             using ConstTriIt = typename HessGrad<Real>::ConstTriIt;
             using Diag = typename HessGrad<Real>::Diag;
@@ -52,8 +52,9 @@ namespace uncertainties {
                     m += 2 * d.grad * d.hhess * v<3>(d.mom);
                     m += d.hhess * d.hhess * v<4>(d.mom);
                 }
+                
                 const ConstTriIt tend = hg.ctend();
-                for (ConstTriIt it = hg.ctbegin(); it != tend; ++it) {
+                for (ConstTriIt it = hg.ctbegin(false); it != tend; ++it) {
                     const Diag &d1 = it.diag1();
                     const Diag &d2 = it.diag2();
                     const Real &hhess = *it;

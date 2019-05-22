@@ -2,7 +2,7 @@ CPP = c++
 CFLAGS = -std=c++11 -g -I..
 LDFLAGS = -lc++
 
-tests = urealhpp iohpp stathpp mathhpp urealshpp functionshpp ureal2hpp distrhpp generic format ureals math mpfrformat mpfrmath mpfrureals cast2 lazy
+tests = urealhpp iohpp stathpp mathhpp urealshpp functionshpp ureal2hpp distrhpp generic format ureals math mpfrformat mpfrmath mpfrureals cast2 lazy generic2
 benchmarks = fillvector accumulate smallureals
 
 programs = $(tests) $(benchmarks)

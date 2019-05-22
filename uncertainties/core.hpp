@@ -92,14 +92,6 @@ namespace uncertainties {
 
     template<typename OutVector, typename InVectorA, typename InVectorB>
     OutVector ureals(const InVectorA &mu, const InVectorB &cov);
-    
-    class LazyPropSetter {
-    public:
-        LazyPropSetter(const bool);
-        ~LazyPropSetter();
-    };
-    
-    bool lazyprop() noexcept;
 }
 
 #endif /* end of include guard: UNCERTAINTIES_CORE_HPP_D4C14D73 */

@@ -29,7 +29,6 @@ This header contains non-template code to be compiled once.
 #include <string>
 #include <cstdlib>
 #include <atomic>
-#include <vector>
 
 #include "core.hpp"
 
@@ -54,19 +53,6 @@ namespace uncertainties {
             return (e > 0 ? "+" : "-") + std::to_string(std::abs(e));
         }
 
-        thread_local std::vector<bool> stack {false};
-    }
-    
-    LazyPropSetter::LazyPropSetter(const bool enable) {
-        internal::stack.push_back(enable);
-    }
-    
-    LazyPropSetter::~LazyPropSetter() {
-        internal::stack.pop_back();
-    }
-    
-    bool lazyprop() noexcept {
-        return internal::stack.back();
     }
 }
 

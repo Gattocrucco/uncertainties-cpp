@@ -52,7 +52,6 @@ namespace uncertainties {
         Real mu;
         std::array<Real, 4> mom;
         std::array<bool, 4> mom_to_compute;
-        // mom_to_compute[0] is set to true only with lazy propagation
         
     public:
         using real_type = Real;
@@ -66,7 +65,6 @@ namespace uncertainties {
             diag.hhess = 0;
             diag.mom = internal::M7P<Real>(new std::array<Real, 7>(moments));
             std::copy(moments.begin(), moments.begin() + 3, this->mom.begin() + 1);
-            this->mom[0] = 0;
         }
 
         UReal2(const Real &n):
@@ -82,7 +80,7 @@ namespace uncertainties {
             return this->hg.size() <= 1;
         }
 
-        Id indepid() const noexcept {
+        Id indepid() const {
             if (not this->isindep()) {
                 return invalid_id;
             } else if (this->hg.size() == 1) {
@@ -92,7 +90,7 @@ namespace uncertainties {
             }
         }
 
-        inline const Real &bare_n() const noexcept {
+        inline const Real &first_order_n() const noexcept {
             return this->mu;
         }
         
@@ -181,17 +179,10 @@ namespace uncertainties {
             return 0;
         }
         
-        template<typename Number>
         friend UReal2<Real, prop> unary(
-            Number &x, const Real &fx, const Real &dfdx, const Real &ddfdxdx
+            const UReal2<Real, prop>x,
+            const Real &fx, const Real &dfdx, const Real &ddfdxdx
         ) {
-            static_assert(
-                std::is_same<typename std::remove_cv<Number>::type,
-                             UReal2<Real, prop>
-                             >::value,
-                "can not apply on different type"
-            );
-            
             UReal2<Real, prop> result;
             result.mu = fx;
             for (bool &b : result.mom_to_compute) {
@@ -199,13 +190,6 @@ namespace uncertainties {
             }
             
             const Real hddfdxdx = ddfdxdx / 2;
-            if (!lazyprop()) {
-                if (hddfdxdx != 0) {
-                    result.mu += internal::propsign(prop) * hddfdxdx * x.m(2);
-                }
-                result.mom[0] = 0;
-                result.mom_to_compute[0] = false;
-            }
             
             const ConstDiagIt dend = x.hg.cdend();
             for (ConstDiagIt it = x.hg.cdbegin(); it != dend; ++it) {
@@ -227,21 +211,12 @@ namespace uncertainties {
             return result;
         }
         
-        template<typename X, typename Y>
         friend UReal2<Real, prop> binary(
-            X &x, Y &y,
+            const UReal2<Real, prop> &x, const UReal2<Real, prop> &y,
             const Real &fxy,
             const Real &dfdx, const Real &dfdy,
             const Real &ddfdxdx, const Real &ddfdydy, const Real &ddfdxdy
         ) {
-            static_assert(
-                std::is_same<typename std::remove_cv<X>::type,
-                             UReal2<Real, prop>>::value and
-                std::is_same<typename std::remove_cv<Y>::type,
-                             UReal2<Real, prop>>::value,
-                "can not apply on different type"
-            );
-            
             UReal2<Real, prop> result;
             result.mu = fxy;
             for (bool &b : result.mom_to_compute) {
@@ -250,19 +225,6 @@ namespace uncertainties {
 
             const Real hddfdxdx = ddfdxdx / 2;
             const Real hddfdydy = ddfdydy / 2;
-            if (!lazyprop()) {
-                if (hddfdxdx != 0) {
-                    result.mu += internal::propsign(prop) * hddfdxdx * x.m(2);
-                }
-                if (hddfdydy != 0) {
-                    result.mu += internal::propsign(prop) * hddfdydy * y.m(2);
-                }
-                if (ddfdxdy != 0) {
-                    result.mu += internal::propsign(prop) * ddfdxdy * cov(x, y);
-                }
-                result.mom[0] = 0;
-                result.mom_to_compute[0] = false;
-            }
             
             const ConstDiagIt dend = x.hg.cdend();
             const ConstDiagIt dend2 = y.hg.cdend();
@@ -317,14 +279,14 @@ namespace uncertainties {
     template<typename Real, Prop prop>
     UReal2<Real, prop>
     operator-(const UReal2<Real, prop> &x) {
-        return unary(x, -(lazyprop() ? x.bare_n() : x.n()), -1, 0);
+        return unary(x, -x.first_order_n(), -1, 0);
     }
     
     template<typename Real, Prop prop>
     UReal2<Real, prop>
     operator+(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {
         return binary(x, y,
-                      lazyprop() ? x.n() + y.n() : x.bare_n() + y.bare_n(),
+                      x.first_order_n() + y.first_order_n(),
                       1, 1, 0, 0, 0);
     }
     
@@ -332,7 +294,7 @@ namespace uncertainties {
     UReal2<Real, prop>
     operator-(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {
         return binary(x, y,
-                      lazyprop() ? x.n() - y.n() : x.bare_n() - y.bare_n(),
+                      x.first_order_n() - y.first_order_n(),
                       1, -1, 0, 0, 0);
     }
 

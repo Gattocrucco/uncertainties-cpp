@@ -27,6 +27,8 @@
 #include <utility>
 #include <memory>
 #include <type_traits>
+#include <cassert>
+#include <limits>
 
 #include "core.hpp"
 #include "internal/hessgrad.hpp"
@@ -46,12 +48,13 @@ namespace uncertainties {
         using Diag = typename HessGrad::Diag;
         using ConstDiagIt = typename HessGrad::ConstDiagIt;
         using ConstTriIt = typename HessGrad::ConstTriIt;
+        using ConstHessIt = typename HessGrad::ConstHessIt;
         
         // variables
         HessGrad hg;
-        Real mu;
-        std::array<Real, 4> mom;
-        std::array<bool, 4> mom_to_compute;
+        Real mu {0};
+        std::array<Real, 4> mom {0, 0, 0, 0};
+        std::array<bool, 4> mom_to_compute {false, false, false, false};
         
     public:
         using real_type = Real;
@@ -179,6 +182,19 @@ namespace uncertainties {
             return 0;
         }
         
+        Real _grad(const UReal2<Real, prop> &x) const {
+            assert(x.hg.size() == 1);
+            return this->hg.diag_get(x.hg.cdbegin()->first).grad * x.hg.cdbegin()->second.grad;
+        }
+        
+        Real _hess(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) const {
+            assert(x.hg.size() == 1);
+            assert(y.hg.size() == 1);
+            const Id idx = x.hg.cdbegin()->first;
+            const Id idy = y.hg.cdbegin()->first;
+            return 2 * (idx == idy ? this->hg.diag_get(idx).hhess : this->hg.tri_get(idx, idy).hhess);
+        }
+        
         friend UReal2<Real, prop> unary(
             const UReal2<Real, prop>x,
             const Real &fx, const Real &dfdx, const Real &ddfdxdx
@@ -191,25 +207,21 @@ namespace uncertainties {
             
             const Real hddfdxdx = ddfdxdx / 2;
             
-            const ConstDiagIt dend = x.hg.cdend();
-            for (ConstDiagIt it = x.hg.cdbegin(); it != dend; ++it) {
-                Diag &dstdiag = result.hg.diag(it->first);
-                const Diag &srcdiag = it->second;
-                dstdiag.grad = srcdiag.grad * dfdx;
-                dstdiag.hhess = hddfdxdx * srcdiag.grad * srcdiag.grad;
-                dstdiag.hhess += dfdx * srcdiag.hhess;
-                dstdiag.mom = srcdiag.mom;
-            }
-            
-            const ConstTriIt tend = x.hg.ctend();
-            for (ConstTriIt it = x.hg.ctbegin(hddfdxdx == 0); it != tend; ++it) {
-                Real &dsthhess = result.hg.tri(it.id1(), it.id2());
-                dsthhess = hddfdxdx * it.diag1().grad * it.diag2().grad;
-                dsthhess += dfdx * (*it);
+            const ConstHessIt end = x.hg.chend();
+            ConstHessIt it = x.hg.chbegin(hddfdxdx == 0);
+            for (; it != end; ++it) {
+                Real &hhess = result.hg.hhess(it.id1(), it.id2());
+                hhess = hddfdxdx * it.diag1().grad * it.diag2().grad;
+                hhess += dfdx * (*it);
+                if (it.id1() == it.id2()) {
+                    Diag &diag = result.hg.diag(it.id1());
+                    diag.mom = it.diag1().mom;
+                    diag.grad = dfdx * it.diag1().grad;
+                }
             }
             
             return result;
-        }
+        }        
         
         friend UReal2<Real, prop> binary(
             const UReal2<Real, prop> &x, const UReal2<Real, prop> &y,
@@ -223,51 +235,60 @@ namespace uncertainties {
                 b = true;
             }
 
+            constexpr Id maxid = std::numeric_limits<Id>::max();
+            const std::pair<Id, Id> pmaxid {maxid, maxid};
+
             const Real hddfdxdx = ddfdxdx / 2;
             const Real hddfdydy = ddfdydy / 2;
+        
+            ConstHessIt itx = x.hg.chbegin(hddfdxdx == 0 and ddfdxdy == 0);
+            const ConstHessIt xend = x.hg.chend();
+            ConstHessIt ity = y.hg.chbegin(hddfdydy == 0 and ddfdxdy == 0);
+            const ConstHessIt yend = y.hg.chend();
             
-            const ConstDiagIt dend = x.hg.cdend();
-            const ConstDiagIt dend2 = y.hg.cdend();
-            ConstDiagIt it2 = y.hg.cdbegin();
-            for (ConstDiagIt it = x.hg.cdbegin(); it != dend; ++it) {
-                Diag &diag = result.hg.diag(it->first);
-                const Real &grad = it->second.grad;
-                diag.grad += dfdx * grad;
-                diag.hhess += hddfdxdx * grad * grad;
-                diag.hhess += dfdx * it->second.hhess;
-                for (; it2 != dend2 && it2->first <= it->first; ++it2) {
-                    Diag &diag = result.hg.diag(it2->first);
-                    const Real &grad = it2->second.grad;
-                    diag.grad += dfdy * grad;
-                    diag.hhess += hddfdydy * grad * grad;
-                    diag.hhess += dfdy * it2->second.hhess;
+            while (itx != xend or ity != yend) {
+                const std::pair<Id, Id> idx = itx != xend ? std::make_pair(itx.id1(), itx.id2()) : pmaxid;
+                const std::pair<Id, Id> idy = ity != yend ? std::make_pair(ity.id1(), ity.id2()) : pmaxid;
+                
+                Real *hhess;
+                Diag *diag;
+                
+                if (idx <= idy) {
+                    hhess = &result.hg.hhess(idx.first, idx.second);
+                    *hhess += hddfdxdx * itx.diag1().grad * itx.diag2().grad;
+                    *hhess += dfdx * (*itx);
+                    if (idx.first == idx.second) {
+                        diag = &result.hg.diag(idx.first);
+                        diag->mom = itx.diag1().mom;
+                        diag->grad += dfdx * itx.diag1().grad;
+                    }
                 }
-                if (it->first == it2->first) {
-                    diag.hhess += ddfdxdy * it->second.grad * it2->second.grad;
+                
+                if (idy <= idx) {
+                    if (idx != idy) {
+                        hhess = &result.hg.hhess(idy.first, idy.second);
+                        if (idy.first == idy.second) {
+                            diag = &result.hg.diag(idy.first);
+                            diag->mom = ity.diag1().mom;
+                        }
+                    }
+                    *hhess += hddfdydy * ity.diag1().grad * ity.diag2().grad;
+                    *hhess += dfdy * (*ity);
+                    if (idy.first == idy.second) {
+                        diag->grad += dfdy * ity.diag1().grad;
+                    }
                 }
+                
+                if (idx == idy) {
+                    *hhess += (ddfdxdy / 2) * 
+                        (itx.diag1().grad * ity.diag2().grad + 
+                         itx.diag2().grad * ity.diag1().grad);
+                }
+                
+                if (idx <= idy) ++itx;
+                if (idy <= idx) ++ity;
             }
-            
-            const ConstTriIt tend = x.hg.ctend();
-            const ConstTriIt tend2 = y.hg.ctend();
-            ConstTriIt it3 = y.hg.ctbegin(hddfdydy == 0 and ddfdxdy == 0);
-            for (ConstTriIt it = x.hg.ctbegin(hddfdxdx == 0 and ddfdxdy == 0); it != tend; ++it) {
-                Real &hhess = result.hg.tri(it.id1(), it.id2());
-                const Diag &d1 = it.diag1();
-                const Diag &d2 = it.diag2();
-                hhess += hddfdxdx * d1.grad * d2.grad;
-                hhess += dfdx * (*it);
-                for (; it3 != tend2 && it3 <= it; ++it3) {
-                    Real &hhess = result.hg.tri(it3.id1(), it3.id2());
-                    const Diag &d1 = it3.diag1();
-                    const Diag &d2 = it3.diag2();
-                    hhess += hddfdxdx * d1.grad * d2.grad;
-                    hhess += dfdx * (*it3);
-                }
-                if (it == it3) {
-                    hhess += (ddfdxdy / 2) * (d1.grad * it3.diag2().grad + d2.grad * it3.diag1().grad);
-                }
-            }
-            
+
             return result;
         }
         
@@ -296,6 +317,30 @@ namespace uncertainties {
         return binary(x, y,
                       x.first_order_n() - y.first_order_n(),
                       1, -1, 0, 0, 0);
+    }
+    
+    template<typename Real, Prop prop>
+    UReal2<Real, prop>
+    operator*(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {
+        const Real xn = x.first_order_n();
+        const Real yn = y.first_order_n();
+        return binary(x, y,
+                      xn * yn,
+                      yn, xn,
+                      0, 0, 1);
+    }
+
+    template<typename Real, Prop prop>
+    UReal2<Real, prop>
+    operator/(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {
+        const Real xn = x.first_order_n();
+        const Real yn = y.first_order_n();
+        const Real invy = 1 / yn;
+        const Real invy2 = invy * invy;
+        return binary(x, y,
+                      xn / yn,
+                      invy, -xn * invy2,
+                      0, 2 * xn * invy2 * invy, -invy2);
     }
 
     using udouble2e = UReal2<double, Prop::est>;

@@ -28,6 +28,7 @@ namespace uncertainties {
         Number normal(const typename Number::real_type &mu,
                       const typename Number::real_type &sigma) {
             std::array<typename Number::real_type, 7> moments;
+            moments.fill(0);
             moments[0] = sigma * sigma;
             moments[2] = 3 * moments[0] * moments[0];
             moments[4] = 5 * moments[2] * moments[0];

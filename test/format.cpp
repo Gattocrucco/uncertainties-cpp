@@ -57,4 +57,7 @@ int main() {
     check<double>(25, 3, "25.0 pm 3.0", 2, " pm ");
     check<double>(2500, 300, "(2.50 pm 0.30)e+3", 2, " pm ");
     check<double>(1, 0.99, "1.0 pm 1.0", 1.5, " pm ");
+    check<double>(1.0 / 0.0, 1.0, "inf pm 1.00000", 2, " pm ");
+    check<double>(-1.0 / 0.0, 1.0, "-inf pm 1.00000", 2, " pm ");
+    check<double>(0, 1.0 / 0, "0 pm inf", 2, " pm ");
 }

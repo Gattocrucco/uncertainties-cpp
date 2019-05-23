@@ -45,8 +45,8 @@ namespace uncertainties {
         class HessGrad {
         public:
             struct Diag {
-                Real grad;
-                Real hhess; // half second derivative
+                Real grad {0};
+                Real hhess {0}; // half second derivative
                 M7P<Real> mom;
             private:
                 std::map<Id, Real> row;
@@ -71,46 +71,33 @@ namespace uncertainties {
                 return this->nodes[id];
             }
             
-            const Real &tri(const Id id1, const Id id2) const {
-                if (id1 == id2) {
-                    throw std::runtime_error("tri: id1 == id2");
+            Diag diag_get(const Id id) const {
+                using It = typename std::map<Id, Diag>::const_iterator;
+                const It it = this->nodes.find(id);
+                if (it != this->nodes.end()) {
+                    return it->second;
+                } else {
+                    return Diag();
                 }
-                const Id minid = std::min(id1, id2);
-                const Id maxid = std::max(id1, id2);
+            }
+            
+            const Real &tri(const Id minid, const Id maxid) const {
+                assert(minid < maxid);
                 auto n = this->nodes.find(minid);
-                if (n == this->nodes.end()) {
-                    throw std::runtime_error("tri_set: !n");
-                }
-                auto N = this->nodes.find(maxid);
-                if (N == this->nodes.end()) {
-                    throw std::runtime_error("tri_set: !N");
-                }
+                assert(n != this->nodes.end());
+                assert(this->nodes.find(maxid) != this->nodes.end());
                 return n->second.row.at(maxid);
             }
 
-            Real &tri(const Id id1, const Id id2) {
-                if (id1 == id2) {
-                    throw std::runtime_error("tri: id1 == id2");
-                }
-                const Id minid = std::min(id1, id2);
-                const Id maxid = std::max(id1, id2);
+            Real &tri(const Id minid, const Id maxid) {
+                assert(minid < maxid);
                 auto n = this->nodes.find(minid);
-                if (n == this->nodes.end()) {
-                    throw std::runtime_error("tri_set: !n");
-                }
-                auto N = this->nodes.find(maxid);
-                if (N == this->nodes.end()) {
-                    throw std::runtime_error("tri_set: !N");
-                }
+                assert(n != this->nodes.end());
                 return n->second.row[maxid];
             }
 
-            const Real &tri_get(const Id id1, const Id id2) const {
-                if (id1 == id2) {
-                    throw std::runtime_error("tri_get: id1 == id2");
-                }
-                const Id minid = std::min(id1, id2);
-                const Id maxid = std::max(id1, id2);
+            Real tri_get(const Id minid, const Id maxid) const {
+                assert(minid < maxid);
                 auto n = this->nodes.find(minid);
                 if (n == this->nodes.end()) {
                     return 0;
@@ -119,11 +106,12 @@ namespace uncertainties {
                 if (t == n->second.row.end()) {
                     return 0;
                 }
-                auto N = this->nodes.find(maxid);
-                if (N == this->nodes.end()) {
-                    throw std::runtime_error("tri_get: !N");
-                }
+                assert(this->nodes.find(maxid) != this->nodes.end());
                 return *t;
+            }
+            
+            inline Real &hhess(const Id minid, const Id maxid) {
+                return minid != maxid ? this->tri(minid, maxid) : this->diag(minid).hhess;
             }
             
             using DiagIt = typename std::map<Id, Diag>::iterator;
@@ -395,6 +383,126 @@ namespace uncertainties {
         
             inline ConstTriIt ctend() const {
                 return ConstTriIt(nodes.cend());
+            }
+            
+            class ConstHessIt {
+            private:
+                const typename std::map<Id, Diag>::const_iterator end;
+                typename std::map<Id, Diag>::const_iterator itmin;
+                typename std::map<Id, Diag>::const_iterator itmax;
+                typename std::map<Id, Real>::const_iterator ittri;
+                bool ondiag = true;
+                const bool skip = true;
+                
+            public:
+                ConstHessIt(const typename std::map<Id, Diag>::const_iterator &nodes_begin,
+                            const typename std::map<Id, Diag>::const_iterator &nodes_end,
+                            const bool skipzero):
+                end {nodes_end}, itmin {nodes_begin}, itmax {nodes_begin},
+                skip {skipzero} {
+                    ;
+                }
+                
+                ConstHessIt(const typename std::map<Id, Diag>::const_iterator &nodes_end):
+                end {nodes_end}, itmin {nodes_end}, itmax {nodes_end} {
+                    ;
+                }
+                
+                void operator++() {
+                    assert(itmin != end);
+                    assert(itmax != end);
+                    if (skip) {
+                        if (ondiag) {
+                            ittri = itmin->second.row.cbegin();
+                            if (ittri != itmin->second.row.cend()) {
+                                ondiag = false;
+                            } else {
+                                ++itmin;
+                                itmax = itmin;
+                            }
+                        } else {
+                            ++ittri;
+                            if (ittri == itmin->second.row.cend()) {
+                                ++itmin;
+                                itmax = itmin;
+                                ondiag = true;
+                            }
+                        }
+                        if (not ondiag) {
+                            for (; itmax->first < ittri->first; ++itmax) ;
+                            assert(itmax->first == ittri->first);
+                        }
+                    } else {
+                        if (ondiag) {
+                            ittri = itmin->second.row.cbegin();
+                            ++itmax;
+                            ondiag = false;
+                        } else {
+                            ++itmax;
+                            if (itmax == end) {
+                                ++itmin;
+                                itmax = itmin;
+                                ondiag = true;
+                            } else {
+                                const auto triend = itmin->second.row.cend();
+                                while (ittri != triend && ittri->first < itmax->first) {
+                                    ++ittri;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                Real operator*() const noexcept {
+                    assert(itmin != end);
+                    assert(itmax != end);
+                    if (ondiag) {
+                        assert(itmax == itmin);
+                        return itmin->second.hhess;
+                    } else {
+                        assert(itmin->first <= itmax->first);
+                        const auto triend = itmin->second.row.cend();
+                        assert(ittri == triend || ittri->first >= itmax->first);
+                        if (ittri != triend && ittri->first == itmax->first) {
+                            return ittri->second;
+                        } else {
+                            return 0;
+                        }
+                    }
+                }
+                
+                inline Id id1() const noexcept {
+                    assert(itmin != end);
+                    return itmin->first;
+                }
+                
+                inline Id id2() const noexcept {
+                    assert(itmax != end);
+                    return itmax->first;
+                }
+                
+                inline const Diag &diag1() const noexcept {
+                    assert(itmin != end);
+                    return itmin->second;
+                }
+                
+                inline const Diag &diag2() const noexcept {
+                    assert(itmax != end);
+                    return itmax->second;
+                }
+                
+                inline friend bool operator!=(const ConstHessIt &it1, const ConstHessIt &it2) noexcept {
+                    assert(it1.end == it2.end);
+                    return it1.itmin != it2.itmin and it1.itmax != it2.itmax;
+                }
+            };
+            
+            ConstHessIt chbegin(const bool skipzero) const {
+                return ConstHessIt(this->nodes.begin(), this->nodes.end(), skipzero);
+            }
+            
+            ConstHessIt chend() const {
+                return ConstHessIt(this->nodes.end());
             }
 
             template<typename OtherReal>

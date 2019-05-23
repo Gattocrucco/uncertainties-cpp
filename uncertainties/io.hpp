@@ -128,9 +128,11 @@ namespace uncertainties {
         
         template<typename Real>
         std::string tostring(const Real &x) {
-            if (x == 0) {
-                return "0";
-            }
+            using std::isnan;
+            using std::isinf;
+            if (isnan(x)) return "nan";
+            if (isinf(x)) return x > 0 ? "inf" : "-inf";
+            if (x == 0) return "0";
             const int n = 6;
             int e = exponent(x);
             std::string m = mantissa(x, n, &e);
@@ -155,8 +157,9 @@ namespace uncertainties {
         }
         const auto mu = nom(x);
         auto s = sdev(x);
-        if (s == 0) {
-            return internal::tostring(mu) + sep + "0";
+        using std::isfinite;
+        if (not isfinite(mu) or not isfinite(s) or s == 0) {
+            return internal::tostring(mu) + sep + internal::tostring(s);
         }
         const int sndig = internal::ndigits(&s, errdig);
         int sexp = internal::exponent(s);

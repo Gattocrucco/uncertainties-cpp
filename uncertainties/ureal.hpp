@@ -287,9 +287,9 @@ namespace uncertainties {
     class UReal {
     private:
         // private variables (there are no other variables around):
-        Id id;
-        Real sdev;
-        Real mu;
+        Id id {0};
+        Real sdev {0};
+        Real mu {0};
         std::map<Id, Real> sigma;
         
         // Summary of class invariants:
@@ -346,8 +346,8 @@ namespace uncertainties {
         
         \throws std::invalid_argument if `s < 0`. 
         */
-        UReal(const Real n, const Real s):
-        mu {std::move(n)}, sdev {std::move(s)}, id {++internal::last_id} {
+        UReal(const Real &n, const Real &s):
+        mu {n}, sdev {s}, id {++internal::last_id} {
             if (this->sdev < 0) {
                 throw std::invalid_argument("uncertainties::UReal::UReal: s < 0");
             }
@@ -358,7 +358,7 @@ namespace uncertainties {
         
         A new independent variable id is *not* generated.
         */
-        UReal(const Real n): mu {std::move(n)} {
+        UReal(const Real &n): mu {n} {
             ;
         }
         

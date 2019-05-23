@@ -27,6 +27,4 @@ int main() {
     check(w);
     const unc::udouble2e v = z;
     check(v);
-    unc::udouble2e x1 = +x;
-    check(x1);
 }

@@ -98,18 +98,23 @@ int main() {
     check(y, x[2], 0.0, 0.0);
 
     y = x[0] / x[1];
-    checkgrad(y, x[0], 1 / xn[1]);
-    checkgrad(y, x[1], -xn[0] / (xn[1] * xn[1]));
-    checkgrad(y, x[2], 0.0);
+    check(y, x[0], x[1], 1 / xn[1], -xn[0] / (xn[1] * xn[1]), 0.0, 2 * xn[0] / (xn[1] * xn[1] * xn[1]), -1 / (xn[1] * xn[1]));
+    check(y, x[2], 0.0, 0.0);
     
     y = x[0] + x[1] * x[2] / -x[3];
-    checkgrad(y, x[0], 1.0);
-    checkgrad(y, x[1], xn[2] / -xn[3]);
-    checkgrad(y, x[2], xn[1] / -xn[3]);
-    checkgrad(y, x[3], xn[1] * xn[2] / (xn[3] * xn[3]));
-    checkgrad(y, x[4], 0.0);
+    check(y, x[0], 1.0, 0.0);
+    check(y, x[1], xn[2] / -xn[3], 0.0);
+    check(y, x[2], xn[1] / -xn[3], 0.0);
+    check(y, x[3], xn[1] * xn[2] / (xn[3] * xn[3]), -2 * xn[1] * xn[2] / (xn[3] * xn[3] * xn[3]));
+    check(y, x[4], 0.0, 0.0);
+    checkhess(y, x[0], x[1], 0.0);
+    checkhess(y, x[0], x[2], 0.0);
+    checkhess(y, x[0], x[3], 0.0);
+    checkhess(y, x[1], x[2], 1 / -xn[3]);
+    checkhess(y, x[1], x[3], xn[2] / (xn[3] * xn[3]));
+    checkhess(y, x[2], x[3], xn[1] / (xn[3] * xn[3]));
     
     y = x[0] + -x[1] * x[1] / x[0];
-    checkgrad(y, -x[0], -1.0 - xn[1] * xn[1] / (xn[0] * xn[0]));
-    checkgrad(y, x[1], -2 * xn[1] / xn[0]);
+    check(y, -x[0], -1.0 - xn[1] * xn[1] / (xn[0] * xn[0]), -2 * xn[1] * xn[1] / (xn[0] * xn[0] * xn[0]));
+    check(y, x[1], -2 * xn[1] / xn[0], -2 / xn[0]);
 }

@@ -45,10 +45,12 @@ class V:
 
     def __repr__(self):
         if self._indices:
-            indstr = '_{' + ''.join(map(lambda i: indices[i], self._indices)) + '}'
+            rankstr = ''
+            indstr = '_' + ''.join(map(lambda i: indices[i], self._indices))
         else:
             indstr = ''
-        return f'V^{{({self._rank})}}{indstr}'
+            rankstr = f'{self._rank}'
+        return f'V{rankstr}{indstr}'
     
     def __lt__(self, d):
         if isinstance(d, V):
@@ -93,10 +95,14 @@ class D:
     def __repr__(self):
         letter = 'G' if self._rank == 1 else 'H'
         if self._indices:
-            indstr = '_{' + ''.join(map(lambda i: indices[i], self._indices)) + '}'
+            indstr = '_' + ''.join(map(lambda i: indices[i], self._indices))
         else:
             indstr = ''
-        return f'{letter}^{{({self._var})}}{indstr}'
+        if str(self._var) == '':
+            varstr = ''
+        else:
+            varstr = f'({self._var})'
+        return f'{letter}{varstr}{indstr}'
     
     def __lt__(self, d):
         if isinstance(d, D):

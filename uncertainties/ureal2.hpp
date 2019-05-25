@@ -257,9 +257,9 @@ namespace uncertainties {
             const Real hddfdydy = ddfdydy / 2;
             const Real hddfdxdy = ddfdxdy / 2;
         
-            ConstHessIt itx = x.hg.chbegin(hddfdxdx == 0 and hddfdxdy == 0);
+            ConstHessIt itx = x.hg.chbegin(hddfdxdx == 0);
             const ConstHessIt xend = x.hg.chend();
-            ConstHessIt ity = y.hg.chbegin(hddfdydy == 0 and hddfdxdy == 0);
+            ConstHessIt ity = y.hg.chbegin(hddfdydy == 0);
             const ConstHessIt yend = y.hg.chend();
             
             while (itx != xend or ity != yend) {
@@ -295,29 +295,25 @@ namespace uncertainties {
                     }
                 }
                 
-                if (itx != xend and ity != yend) {
-                    bool have_hhess = (idx.second == idy.second and idx <= idy)
-                                   or (idx.first  == idy.first  and idy <= idx);
-                    if (not have_hhess) {
-                        const Id min = std::min(idx.first, idy.second);
-                        const Id max = std::max(idx.first, idy.second);
-                        hhess = &result.hg.hhess(min, max);
-                    }
-                    *hhess += hddfdxdy * (itx.diag1().grad * ity.diag2().grad);
-
-                    have_hhess = (idx.second == idy.second and idy <= idx)
-                              or (idx.first  == idy.first  and idx <= idy)
-                              or (idx.first == idx.second and idy.first == idy.second);
-                    if (not have_hhess) {
-                        const Id min = std::min(idx.second, idy.first);
-                        const Id max = std::max(idx.second, idy.first);
-                        hhess = &result.hg.hhess(min, max);
-                    }
-                    *hhess += hddfdxdy * (itx.diag2().grad * ity.diag1().grad);
-                }
-                
                 if (idx <= idy) ++itx;
                 if (idy <= idx) ++ity;
+            }
+            
+            // I shall consider the following code a very inefficient patch.
+            if (hddfdxdy != 0) {
+                const ConstDiagIt end = result.hg.cdend();
+                ConstDiagIt iti, itj;
+                for (iti = result.hg.cdbegin(); iti != end; ++iti) {
+                    for (itj = iti; itj != end; ++itj) {
+                        const Id idi = iti->first;
+                        const Id idj = itj->first;
+                        const Real dix = x.hg.diag_get(idi).grad;
+                        const Real djx = x.hg.diag_get(idj).grad;
+                        const Real diy = y.hg.diag_get(idi).grad;
+                        const Real djy = y.hg.diag_get(idj).grad;
+                        result.hg.hhess(idi, idj) += hddfdxdy * (dix * djy + djx * diy);
+                    }
+                }
             }
 
             return result;

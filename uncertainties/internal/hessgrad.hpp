@@ -91,9 +91,7 @@ namespace uncertainties {
 
             Real &tri(const Id minid, const Id maxid) {
                 assert(minid < maxid);
-                auto n = this->nodes.find(minid);
-                assert(n != this->nodes.end());
-                return n->second.row[maxid];
+                return this->nodes[minid].row[maxid];
             }
 
             Real tri_get(const Id minid, const Id maxid) const {
@@ -107,11 +105,15 @@ namespace uncertainties {
                     return 0;
                 }
                 assert(this->nodes.find(maxid) != this->nodes.end());
-                return *t;
+                return t->second;
             }
             
             inline Real &hhess(const Id minid, const Id maxid) {
                 return minid != maxid ? this->tri(minid, maxid) : this->diag(minid).hhess;
+            }
+            
+            inline Real hhess_get(const Id id1, const Id id2) const {
+                return id1 != id2 ? this->tri_get(std::min(id1, id2), std::max(id1, id2)) : this->diag_get(id1).hhess;
             }
             
             using DiagIt = typename std::map<Id, Diag>::iterator;

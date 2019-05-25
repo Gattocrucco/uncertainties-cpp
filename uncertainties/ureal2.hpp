@@ -69,7 +69,7 @@ namespace uncertainties {
             diag.mom = internal::M7P<Real>(new std::array<Real, 7>(moments));
             std::copy(moments.begin(), moments.begin() + 3, this->mom.begin() + 1);
         }
-
+        
         UReal2(const Real &n):
         mu {n} {
             ;
@@ -184,7 +184,8 @@ namespace uncertainties {
         
         Real _grad(const UReal2<Real, prop> &x) const {
             assert(x.hg.size() == 1);
-            return this->hg.diag_get(x.hg.cdbegin()->first).grad * x.hg.cdbegin()->second.grad;
+            const ConstDiagIt it = x.hg.cdbegin();
+            return this->hg.diag_get(it->first).grad / it->second.grad;
         }
         
         Real _hess(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) const {
@@ -192,7 +193,21 @@ namespace uncertainties {
             assert(y.hg.size() == 1);
             const Id idx = x.hg.cdbegin()->first;
             const Id idy = y.hg.cdbegin()->first;
-            return 2 * (idx == idy ? this->hg.diag_get(idx).hhess : this->hg.tri_get(idx, idy).hhess);
+            if (idx != idy) {
+                const Real xgrad = x.hg.cdbegin()->second.grad;
+                const Real ygrad = y.hg.cdbegin()->second.grad;
+                return 2 * this->hg.hhess_get(idx, idy) / (xgrad * ygrad);
+            } else {
+                const Id id = idx;
+                const Real dxdv = x.hg.cdbegin()->second.grad;
+                const Real dydv = y.hg.cdbegin()->second.grad;
+                const Real ddxdvdv = 2 * x.hg.cdbegin()->second.hhess;
+                const Real ddydvdv = 2 * y.hg.cdbegin()->second.hhess;
+                assert(dxdv == dydv and ddxdvdv == ddydvdv);
+                const Real dfdv = this->hg.diag_get(id).grad;
+                const Real ddfdvdv = 2 * this->hg.hhess_get(id, id);
+                return (ddfdvdv - (dfdv / dxdv) * ddxdvdv) / (dxdv * dxdv);
+            }
         }
         
         friend UReal2<Real, prop> unary(
@@ -240,10 +255,11 @@ namespace uncertainties {
 
             const Real hddfdxdx = ddfdxdx / 2;
             const Real hddfdydy = ddfdydy / 2;
+            const Real hddfdxdy = ddfdxdy / 2;
         
-            ConstHessIt itx = x.hg.chbegin(hddfdxdx == 0 and ddfdxdy == 0);
+            ConstHessIt itx = x.hg.chbegin(hddfdxdx == 0 and hddfdxdy == 0);
             const ConstHessIt xend = x.hg.chend();
-            ConstHessIt ity = y.hg.chbegin(hddfdydy == 0 and ddfdxdy == 0);
+            ConstHessIt ity = y.hg.chbegin(hddfdydy == 0 and hddfdxdy == 0);
             const ConstHessIt yend = y.hg.chend();
             
             while (itx != xend or ity != yend) {
@@ -279,10 +295,25 @@ namespace uncertainties {
                     }
                 }
                 
-                if (idx == idy) {
-                    *hhess += (ddfdxdy / 2) * 
-                        (itx.diag1().grad * ity.diag2().grad + 
-                         itx.diag2().grad * ity.diag1().grad);
+                if (itx != xend and ity != yend) {
+                    bool have_hhess = (idx.second == idy.second and idx <= idy)
+                                   or (idx.first  == idy.first  and idy <= idx);
+                    if (not have_hhess) {
+                        const Id min = std::min(idx.first, idy.second);
+                        const Id max = std::max(idx.first, idy.second);
+                        hhess = &result.hg.hhess(min, max);
+                    }
+                    *hhess += hddfdxdy * (itx.diag1().grad * ity.diag2().grad);
+
+                    have_hhess = (idx.second == idy.second and idy <= idx)
+                              or (idx.first  == idy.first  and idx <= idy)
+                              or (idx.first == idx.second and idy.first == idy.second);
+                    if (not have_hhess) {
+                        const Id min = std::min(idx.second, idy.first);
+                        const Id max = std::max(idx.second, idy.first);
+                        hhess = &result.hg.hhess(min, max);
+                    }
+                    *hhess += hddfdxdy * (itx.diag2().grad * ity.diag1().grad);
                 }
                 
                 if (idx <= idy) ++itx;
@@ -295,54 +326,50 @@ namespace uncertainties {
         inline const UReal2<Real, prop> &operator+() const noexcept {
             return *this;
         }
+        
+        friend UReal2<Real, prop>
+        operator-(const UReal2<Real, prop> &x) {
+            return unary(x, -x.first_order_n(), -1, 0);
+        }
+    
+        friend UReal2<Real, prop>
+        operator+(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {
+            return binary(x, y,
+                          x.first_order_n() + y.first_order_n(),
+                          1, 1, 0, 0, 0);
+        }
+    
+        friend UReal2<Real, prop>
+        operator-(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {
+            return binary(x, y,
+                          x.first_order_n() - y.first_order_n(),
+                          1, -1, 0, 0, 0);
+        }
+    
+        friend UReal2<Real, prop>
+        operator*(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {
+            const Real xn = x.first_order_n();
+            const Real yn = y.first_order_n();
+            return binary(x, y,
+                          xn * yn,
+                          yn, xn,
+                          0, 0, 1);
+        }
+
+        friend UReal2<Real, prop>
+        operator/(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {
+            const Real xn = x.first_order_n();
+            const Real yn = y.first_order_n();
+            const Real invy = 1 / yn;
+            const Real invy2 = invy * invy;
+            return binary(x, y,
+                          xn / yn,
+                          invy, -xn * invy2,
+                          0, 2 * xn * invy2 * invy, -invy2);
+        }
+
     };
     
-    template<typename Real, Prop prop>
-    UReal2<Real, prop>
-    operator-(const UReal2<Real, prop> &x) {
-        return unary(x, -x.first_order_n(), -1, 0);
-    }
-    
-    template<typename Real, Prop prop>
-    UReal2<Real, prop>
-    operator+(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {
-        return binary(x, y,
-                      x.first_order_n() + y.first_order_n(),
-                      1, 1, 0, 0, 0);
-    }
-    
-    template<typename Real, Prop prop>
-    UReal2<Real, prop>
-    operator-(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {
-        return binary(x, y,
-                      x.first_order_n() - y.first_order_n(),
-                      1, -1, 0, 0, 0);
-    }
-    
-    template<typename Real, Prop prop>
-    UReal2<Real, prop>
-    operator*(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {
-        const Real xn = x.first_order_n();
-        const Real yn = y.first_order_n();
-        return binary(x, y,
-                      xn * yn,
-                      yn, xn,
-                      0, 0, 1);
-    }
-
-    template<typename Real, Prop prop>
-    UReal2<Real, prop>
-    operator/(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {
-        const Real xn = x.first_order_n();
-        const Real yn = y.first_order_n();
-        const Real invy = 1 / yn;
-        const Real invy2 = invy * invy;
-        return binary(x, y,
-                      xn / yn,
-                      invy, -xn * invy2,
-                      0, 2 * xn * invy2 * invy, -invy2);
-    }
-
     using udouble2e = UReal2<double, Prop::est>;
     using udouble2m = UReal2<double, Prop::mean>;
     

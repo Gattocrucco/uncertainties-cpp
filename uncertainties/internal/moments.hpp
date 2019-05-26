@@ -27,135 +27,168 @@
 namespace uncertainties {
     namespace internal {
         template<typename Real>
-        Real compute_mom(const HessGrad<Real> &hg, const int n) {
-            assert(n >= 1 and n <= 2);
+        Real compute_m1(const HessGrad<Real> &hg) {
+            using ConstDiagIt = typename HessGrad<Real>::ConstDiagIt;
+            using Diag = typename HessGrad<Real>::Diag;
+            Real m(0);
+            const ConstDiagIt dend = hg.cdend();
+            for (ConstDiagIt it = hg.cdbegin(); it != dend; ++it) {
+                const Diag &d = (*it).second;
+                m += d.hhess * v<2>(d.mom);
+            }
+            return m;
+        }
+
+        template<typename Real>
+        Real compute_m2(const HessGrad<Real> &hg) {
             using ConstDiagIt = typename HessGrad<Real>::ConstDiagIt;
             using ConstTriIt = typename HessGrad<Real>::ConstTriIt;
             using Diag = typename HessGrad<Real>::Diag;
             Real m(0);
-            if (n == 1) {
-                const ConstDiagIt dend = hg.cdend();
-                for (ConstDiagIt it = hg.cdbegin(); it != dend; ++it) {
-                    const Diag &d = (*it).second;
-                    m += d.hhess * v<2>(d.mom);
-                }
-            } else if (n == 2) {
-                // formula:
-                // C[y^2] =
-                // G_i^2 V_{ii} +
-                // 2 G_i H_{ii} V_{iii} +
-                // H_{ii} H_{ii} V_{iiii} +
-                // 2 \sum_{i < j} (H_{ii} H_{jj} + 2 H_{ij}^2) V_{ii} V_{jj}
-                for (ConstDiagIt it = hg.cdbegin(); it != hg.cdend(); ++it) {
-                    const Diag &d = (*it).second;
-                    m += d.grad * d.grad * v<2>(d.mom);
-                    m += 2 * d.grad * d.hhess * v<3>(d.mom);
-                    m += d.hhess * d.hhess * v<4>(d.mom);
-                }
-                
-                const ConstTriIt tend = hg.ctend();
-                for (ConstTriIt it = hg.ctbegin(false); it != tend; ++it) {
-                    const Diag &d1 = it.diag1();
-                    const Diag &d2 = it.diag2();
-                    const Real &hhess = *it;
-                    m += 2 * (d1.hhess * d2.hhess + 2 * hhess * hhess) * v<2>(d1.mom) * v<2>(d2.mom);
-                }
-            } else if (n == 3) {
-                // formula:
-                // A1)  G_i G_i G_i V_iii + 
-                // A2)  3 G_i G_i H_ii V_iiii + 
-                // B1)  3 G_j G_j H_ii V_iijj + 
-                // D1)  6 G_i G_j H_ij V_iijj + 
-                // A3)  3 G_i H_ii H_ii V_iiiii + 
-                // D2)  12 G_j H_ii H_ij V_iiijj + 
-                // D3)  12 G_i H_ij H_ij V_iiijj + 
-                // B2)  6 G_i H_ii H_jj V_iiijj + 
-                // A4)  H_ii H_ii H_ii V_iiiiii + 
-                // D4)  12 H_ii H_ij H_ij V_iiiijj + 
-                // B3)  3 H_ii H_ii H_jj V_iiiijj + 
-                // D5)  4 H_ij H_ij H_ij V_iiijjj + 
-                // D6)  6 H_ii H_ij H_jj V_iiijjj + 
-                // E1)  8 H_ij H_ik H_jk V_iijjkk + 
-                // F1)  6 H_ii H_jk H_jk V_iijjkk + 
-                // C1)  H_ii H_jj H_kk V_iijjkk
-                
-                const ConstDiagIt dend = hg.cdend();
-                const ConstTriIt tend = hg.ctend();
+            
+            // formula:
+            // C[y^2] =
+            // G_i^2 V_{ii} +
+            // 2 G_i H_{ii} V_{iii} +
+            // H_{ii} H_{ii} V_{iiii} +
+            // 2 \sum_{i < j} (H_{ii} H_{jj} + 2 H_{ij}^2) V_{ii} V_{jj}
+            
+            for (ConstDiagIt it = hg.cdbegin(); it != hg.cdend(); ++it) {
+                const Diag &d = (*it).second;
+                m += d.grad * d.grad * v<2>(d.mom);
+                m += 2 * d.grad * d.hhess * v<3>(d.mom);
+                m += d.hhess * d.hhess * v<4>(d.mom);
+            }
+            
+            const ConstTriIt tend = hg.ctend();
+            for (ConstTriIt it = hg.ctbegin(false); it != tend; ++it) {
+                const Diag &d1 = it.diag1();
+                const Diag &d2 = it.diag2();
+                const Real &hhess = *it;
+                m += 2 * (d1.hhess * d2.hhess + 2 * hhess * hhess) * v<2>(d1.mom) * v<2>(d2.mom);
+            }
+            return m;
+        }
 
-                // CYCLE A
-                for (ConstDiagIt it = hg.cdbegin(); it != dend; ++it) {
-                    const Real &grad = it->second.grad;
-                    const Real &hhess = it->second.hhess;
-                    const M7P<Real> &mom = it->second.mom;
-                    m += grad * grad * grad * v<3>(mom); // A1
-                    m += 3 * grad * grad * hhess * v<4>(mom); // A2
-                    m += 3 * grad * hhess * hhess * v<5>(mom); // A3
-                    m += hhess * hhess * hhess * hhess * v<6>(mom); // A4
+        template<typename Real>
+        Real compute_m3(const HessGrad<Real> &hg) {
+            using ConstDiagIt = typename HessGrad<Real>::ConstDiagIt;
+            using ConstTriIt = typename HessGrad<Real>::ConstTriIt;
+            using Diag = typename HessGrad<Real>::Diag;
+            Real m(0);
+            
+            // formula:
+            // A1)  G_i G_i G_i V_iii + 
+            // A2)  3 G_i G_i H_ii V_iiii + 
+            // B1)  3 G_j G_j H_ii V_iijj + 
+            // D1)  6 G_i G_j H_ij V_iijj + 
+            // A3)  3 G_i H_ii H_ii V_iiiii + 
+            // D2)  12 G_j H_ii H_ij V_iiijj + 
+            // D3)  12 G_i H_ij H_ij V_iiijj + 
+            // B2)  6 G_i H_ii H_jj V_iiijj + 
+            // A4)  H_ii H_ii H_ii V_iiiiii + 
+            // D4)  12 H_ii H_ij H_ij V_iiiijj + 
+            // B3)  3 H_ii H_ii H_jj V_iiiijj + 
+            // D5)  4 H_ij H_ij H_ij V_iiijjj + 
+            // D6)  6 H_ii H_ij H_jj V_iiijjj + 
+            // E1)  8 H_ij H_ik H_jk V_iijjkk + 
+            // F1)  6 H_ii H_jk H_jk V_iijjkk + 
+            // C1)  H_ii H_jj H_kk V_iijjkk
+            
+            const ConstDiagIt dend = hg.cdend();
+            const ConstTriIt tend = hg.ctend();
+
+            // CYCLE A
+            for (ConstDiagIt it = hg.cdbegin(); it != dend; ++it) {
+                const Real &grad = it->second.grad;
+                const Real &hhess = it->second.hhess;
+                const M7P<Real> &mom = it->second.mom;
+                m += grad * grad * grad * v<3>(mom); // A1
+                m += 3 * grad * grad * hhess * v<4>(mom); // A2
+                m += 3 * grad * hhess * hhess * v<5>(mom); // A3
+                m += hhess * hhess * hhess * hhess * v<6>(mom); // A4
+                
+                // CYCLE B
+                ConstDiagIt it2 = it;
+                for (++it2; it2 != dend; ++it2) {
+                    const Real &grad2 = it2->second.grad;
+                    const Real &hhess2 = it2->second.hhess;
+                    const M7P<Real> &mom2 = it2->second.mom;
+                    m += 3 * grad2 * grad2 * hhess * v<2>(mom) * v<2>(mom2); // B1(i, j)
+                    m += 3 * grad * grad * hhess2 * v<2>(mom) * v<2>(mom2); // B1(j, i)
+                    m += 6 * grad * hhess * hhess2 * v<3>(mom) * v<2>(mom2); // B2(i, j)
+                    m += 6 * grad2 * hhess2 * hhess * v<3>(mom2) * v<2>(mom); // B2(j, i)
+                    m += 3 * hhess * hhess * hhess2 * v<4>(mom) * v<2>(mom2); // B3(i, j)
+                    m += 3 * hhess2 * hhess2 * hhess * v<4>(mom2) * v<2>(mom); // B3(j, i)
                     
-                    // CYCLE B
-                    ConstDiagIt it2 = it;
-                    for (++it2; it2 != dend; ++it2) {
-                        const Real &grad2 = it2->second.grad;
-                        const Real &hhess2 = it2->second.hhess;
-                        const M7P<Real> &mom2 = it2->second.mom;
-                        m += 3 * grad2 * grad2 * hhess * v<2>(mom) * v<2>(mom2); // B1(i, j)
-                        m += 3 * grad * grad * hhess2 * v<2>(mom) * v<2>(mom2); // B1(j, i)
-                        m += 6 * grad * hhess * hhess2 * v<3>(mom) * v<2>(mom2); // B2(i, j)
-                        m += 6 * grad2 * hhess2 * hhess * v<3>(mom2) * v<2>(mom); // B2(j, i)
-                        m += 3 * hhess * hhess * hhess2 * v<4>(mom) * v<2>(mom2); // B3(i, j)
-                        m += 3 * hhess2 * hhess2 * hhess * v<4>(mom2) * v<2>(mom); // B3(j, i)
-                        
-                        // CYCLE C
-                        ConstDiagIt it3 = it2;
-                        for (++it3; it3 != dend; ++it3) {
-                            const Real &grad3 = it3->second.grad;
-                            const Real &hhess3 = it3->second.hhess;
-                            const M7P<Real> &mom3 = it3->second.mom;
-                            m += 6 * hhess * hhess2 * hhess3 * v<2>(mom) * v<2>(mom2) * v<2>(mom3); // C1
-                        }
-                    }
-                    
-                    // CYCLE F
-                    // This cycle could be more efficient by starting from
-                    // `it` using map::lower_bound if the off-diagonal terms in
-                    // `hg` were in a separate map.
-                    for (ConstTriIt it2 = hg.ctbegin(false); it2 != tend; ++it2) {
-                        if (it2.id1() == it->first or it2.id2() == it->first) {
-                            continue;
-                        }
-                        const Real hhess2 = *it2;
-                        m += 2 * 6 * hhess * hhess2 * hhess2 * v<2>(mom) * v<2>(it2.diag1().mom) * v<2>(it2.diag2().mom); // F1
+                    // CYCLE C
+                    ConstDiagIt it3 = it2;
+                    for (++it3; it3 != dend; ++it3) {
+                        const Real &grad3 = it3->second.grad;
+                        const Real &hhess3 = it3->second.hhess;
+                        const M7P<Real> &mom3 = it3->second.mom;
+                        m += 6 * hhess * hhess2 * hhess3 * v<2>(mom) * v<2>(mom2) * v<2>(mom3); // C1
                     }
                 }
                 
-                // CYCLE D
-                for (ConstTriIt it = hg.ctbegin(false); it != tend; ++it) {
-                    const Diag &d1 = it.diag1();
-                    const Diag &d2 = it.diag2();
-                    const Real hhess = *it;
-                    m += 2 * 6 * d1.grad * d2.grad * hhess * v<2>(d1.mom) * v<2>(d2.mom); // D1
-                    m += 12 * d2.grad * d1.hhess * hhess * v<3>(d1.mom) * v<2>(d2.mom); // D2(i, j)
-                    m += 12 * d1.grad * d2.hhess * hhess * v<3>(d2.mom) * v<2>(d1.mom); // D2(j, i)
-                    m += 12 * d1.grad * hhess * hhess * v<3>(d1.mom) * v<2>(d2.mom); // D3(i, j)
-                    m += 12 * d2.grad * hhess * hhess * v<3>(d2.mom) * v<2>(d1.mom); // D3(j, i)
-                    m += 12 * d1.hhess * hhess * hhess * v<4>(d1.mom) * v<2>(d2.mom); // D4(i, j)
-                    m += 12 * d2.hhess * hhess * hhess * v<4>(d2.mom) * v<2>(d1.mom); // D4(j, i)
-                    m += 2 * 4 * hhess * hhess * hhess * v<3>(d1.mom) * v<3>(d2.mom); // D5
-                    m += 2 * 6 * d1.hhess * hhess * d2.hhess * v<3>(d1.mom) * v<3>(d2.mom); // D6
-                    
-                    // CYCLE E
-                    ConstTriIt it2 = it;
-                    for (++it2; it2 != tend && it2.id1() == it.id1(); ++it2) {
-                        // it = ij
-                        // it2 = ik
-                        // and jk manually
-                        const Real hhess2 = *it2;
-                        const Real hhess3 = hg.tri_get(it.id2(), it2.id2());
-                        m += 6 * 8 * hhess * hhess2 * hhess3 * v<2>(d1.mom) * v<2>(d2.mom) * v<2>(it2.diag2().mom); // E1
+                // CYCLE F
+                // This cycle could be more efficient by starting from
+                // `it` using map::lower_bound if the off-diagonal terms in
+                // `hg` were in a separate map.
+                for (ConstTriIt it2 = hg.ctbegin(true); it2 != tend; ++it2) {
+                    if (it2.id1() == it->first or it2.id2() == it->first) {
+                        continue;
                     }
+                    const Real &hhess2 = *it2;
+                    m += 2 * 6 * hhess * hhess2 * hhess2 * v<2>(mom) * v<2>(it2.diag1().mom) * v<2>(it2.diag2().mom); // F1
+                }
+            }
+            
+            // CYCLE D
+            for (ConstTriIt it = hg.ctbegin(true); it != tend; ++it) {
+                const Diag &d1 = it.diag1();
+                const Diag &d2 = it.diag2();
+                const Real hhess = *it;
+                m += 2 * 6 * d1.grad * d2.grad * hhess * v<2>(d1.mom) * v<2>(d2.mom); // D1
+                m += 12 * d2.grad * d1.hhess * hhess * v<3>(d1.mom) * v<2>(d2.mom); // D2(i, j)
+                m += 12 * d1.grad * d2.hhess * hhess * v<3>(d2.mom) * v<2>(d1.mom); // D2(j, i)
+                m += 12 * d1.grad * hhess * hhess * v<3>(d1.mom) * v<2>(d2.mom); // D3(i, j)
+                m += 12 * d2.grad * hhess * hhess * v<3>(d2.mom) * v<2>(d1.mom); // D3(j, i)
+                m += 12 * d1.hhess * hhess * hhess * v<4>(d1.mom) * v<2>(d2.mom); // D4(i, j)
+                m += 12 * d2.hhess * hhess * hhess * v<4>(d2.mom) * v<2>(d1.mom); // D4(j, i)
+                m += 2 * 4 * hhess * hhess * hhess * v<3>(d1.mom) * v<3>(d2.mom); // D5
+                m += 2 * 6 * d1.hhess * hhess * d2.hhess * v<3>(d1.mom) * v<3>(d2.mom); // D6
+                
+                // CYCLE E
+                ConstTriIt it2 = it;
+                for (++it2; it2 != tend && it2.id1() == it.id1(); ++it2) {
+                    // it = ij
+                    // it2 = ik
+                    // and jk manually
+                    const Real hhess2 = *it2;
+                    const Real hhess3 = hg.tri_get(it.id2(), it2.id2());
+                    m += 6 * 8 * hhess * hhess2 * hhess3 * v<2>(d1.mom) * v<2>(d2.mom) * v<2>(it2.diag2().mom); // E1
                 }
             }
             return m;
+        }
+
+        template<typename Real>
+        Real compute_mom(const HessGrad<Real> &hg, const int n) {
+            assert(n >= 1 and n <= 3);
+            using ConstDiagIt = typename HessGrad<Real>::ConstDiagIt;
+            using ConstTriIt = typename HessGrad<Real>::ConstTriIt;
+            using Diag = typename HessGrad<Real>::Diag;
+            switch (n) {
+                case 1:
+                return compute_m1(hg);
+                case 2:
+                return compute_m2(hg);
+                case 3:
+                return compute_m3(hg);
+                default:
+                return 0;
+            }
         }
     }
 }

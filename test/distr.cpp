@@ -74,4 +74,5 @@ int main() {
     checkcov(x, x, 1.0);
     checkcov(x, utype(1.0), 0.0);
     checkcov(x + x, x - x, 0.0);
+    check(normal<utype>(1, 2), {4.0, 0.0});
 }

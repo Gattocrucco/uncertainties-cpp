@@ -56,6 +56,27 @@ namespace uncertainties {
         std::array<Real, 4> mom {0, 0, 0, 0};
         std::array<bool, 4> mom_to_compute {false, false, false, false};
         
+        template<typename Predicate>
+        friend bool all(const UReal2<Real, prop> &x, Predicate p) {
+            if (not p(x.mu)) {
+                return false;
+            }
+            const ConstDiagIt dend = x.hg.cdend();
+            for (ConstDiagIt it = x.hg.cdbegin(); it != dend; ++it) {
+                const Diag &diag = it->second;
+                if (not p(diag.grad) or not p(diag.hhess)) {
+                    return false;
+                }
+            }
+            const ConstTriIt tend = x.hg.ctend();
+            for (ConstTriIt it = x.hg.ctbegin(true); it != tend; ++it) {
+                if (not p(*it)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        
     public:
         using real_type = Real;
         static constexpr Prop prop_mode = prop;
@@ -103,7 +124,7 @@ namespace uncertainties {
             return this->hg.size() <= 1;
         }
 
-        Id indepid() const {
+        Id indepid() const noexcept {
             if (not this->isindep()) {
                 return invalid_id;
             } else if (this->hg.size() == 1) {
@@ -117,43 +138,43 @@ namespace uncertainties {
             return this->mu;
         }
         
-        Real n() {
+        Real n() noexcept  {
             return this->mu + internal::propsign(prop) * this->m(1);
         }
 
-        Real n() const {
+        Real n() const noexcept {
             return this->mu + internal::propsign(prop) * this->m(1);
         }
         
-        Real s() {
+        Real s() noexcept {
             using std::sqrt;
             return sqrt(this->m(2));
         }
 
-        Real s() const {
+        Real s() const noexcept {
             using std::sqrt;
             return sqrt(this->m(2));
         }
         
-        Real skew() {
+        Real skew() noexcept {
             return this->m(3) / (this->s() * this->m(2));
         }
         
-        Real skew() const {
+        Real skew() const noexcept {
             return this->m(3) / (this->s() * this->m(2));
         }
         
-        Real kurt() {
+        Real kurt() noexcept {
             const Real &s2 = this->m(2);
             return this->m(4) / (s2 * s2);
         }
         
-        Real kurt() const {
+        Real kurt() const noexcept {
             const Real &s2 = this->m(2);
             return this->m(4) / (s2 * s2);
         }
         
-        Real m(const int n) {
+        Real m(const int n) noexcept {
             const int i = n - 1;
             if (this->mom_to_compute.at(i)) {
                 this->mom[i] = internal::compute_mom(this->hg, n);
@@ -162,7 +183,7 @@ namespace uncertainties {
             return this->mom[i];
         }
         
-        Real m(const int n) const {
+        Real m(const int n) const noexcept {
             const int i = n - 1;
             if (this->mom_to_compute.at(i)) {
                 return internal::compute_mom(this->hg, n);
@@ -383,32 +404,47 @@ namespace uncertainties {
                           invy, -xn * invy2,
                           0, 2 * xn * invy2 * invy, -invy2);
         }
-
+        
+        friend inline bool isfinite(const UReal2<Real, prop> &x) noexcept {
+            using std::isfinite;
+            return all(x, [](const Real &n) { return isfinite(n); });
+        }
+        
+        friend inline bool isnormal(const UReal2<Real, prop> &x) noexcept {
+            using std::isnormal;
+            return all(x, [](const Real &n) { return isnormal(n); });
+        }
     };
     
-    using udouble2e = UReal2<double, Prop::est>;
-    using udouble2m = UReal2<double, Prop::mean>;
+    template<typename Real>
+    using UReal2E = UReal2<Real, Prop::est>;
     
-    using ufloat2e = UReal2<float, Prop::est>;
-    using ufloat2m = UReal2<float, Prop::mean>;
+    template<typename Real>
+    using UReal2M = UReal2<Real, Prop::mean>;
+    
+    using udouble2e = UReal2E<double>;
+    using udouble2m = UReal2M<double>;
+    
+    using ufloat2e = UReal2E<float>;
+    using ufloat2m = UReal2M<float>;
     
     template<typename Real, Prop prop>
-    Real nom(const UReal2<Real, prop> &x) {
+    inline Real nom(const UReal2<Real, prop> &x) noexcept {
         return x.n();
     }
 
     template<typename Real, Prop prop>
-    Real nom(UReal2<Real, prop> &x) {
+    inline Real nom(UReal2<Real, prop> &x) noexcept {
         return x.n();
     }
     
     template<typename Real, Prop prop>
-    Real sdev(const UReal2<Real, prop> &x) {
+    inline Real sdev(const UReal2<Real, prop> &x) noexcept {
         return x.s();
     }
 
     template<typename Real, Prop prop>
-    Real sdev(UReal2<Real, prop> &x) {
+    inline Real sdev(UReal2<Real, prop> &x) noexcept {
         return x.s();
     }
 }

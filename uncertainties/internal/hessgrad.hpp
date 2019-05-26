@@ -48,470 +48,328 @@ namespace uncertainties {
                 Real grad {0};
                 Real hhess {0}; // half second derivative
                 M7P<Real> mom;
-            private:
-                std::map<Id, Real> row;
-                
-                template<typename>
-                friend class HessGrad;
             };
+            
+            using IdPair = std::pair<Id, Id>;
         
         private:
-            std::map<Id, Diag> nodes;
+            std::map<Id, Diag> diagmap;
+            std::map<IdPair, Real> trimap;
+            
+            static const Real zero;
+            static const Diag zerodiag;
         
         public:
             inline typename std::map<Id, Diag>::size_type size() const noexcept {
-                return this->nodes.size();
+                return diagmap.size();
             }
         
             inline const Diag &diag(const Id id) const {
-                return this->nodes.at(id);
+                return diagmap.at(id);
             }
         
             inline Diag &diag(const Id id) {
-                return this->nodes[id];
+                return diagmap[id];
             }
             
-            Diag diag_get(const Id id) const {
+            const Diag &diag_get(const Id id) const noexcept {
                 using It = typename std::map<Id, Diag>::const_iterator;
-                const It it = this->nodes.find(id);
-                if (it != this->nodes.end()) {
+                const It it = diagmap.find(id);
+                if (it != diagmap.end()) {
                     return it->second;
                 } else {
-                    return Diag();
+                    return zerodiag;
                 }
             }
             
             const Real &tri(const Id minid, const Id maxid) const {
                 assert(minid < maxid);
-                auto n = this->nodes.find(minid);
-                assert(n != this->nodes.end());
-                assert(this->nodes.find(maxid) != this->nodes.end());
-                return n->second.row.at(maxid);
+                return trimap.at({minid, maxid});
             }
 
             Real &tri(const Id minid, const Id maxid) {
                 assert(minid < maxid);
-                return this->nodes[minid].row[maxid];
+                return trimap[{minid, maxid}];
             }
 
-            Real tri_get(const Id minid, const Id maxid) const {
+            const Real &tri_get(const Id minid, const Id maxid) const noexcept {
                 assert(minid < maxid);
-                auto n = this->nodes.find(minid);
-                if (n == this->nodes.end()) {
-                    return 0;
+                using It = typename std::map<IdPair, Real>::const_iterator;
+                const It it = trimap.find({minid, maxid});
+                if (it != trimap.end()) {
+                    return it->second;
+                } else {
+                    return zero;
                 }
-                auto t = n->second.row.find(maxid);
-                if (t == n->second.row.end()) {
-                    return 0;
-                }
-                assert(this->nodes.find(maxid) != this->nodes.end());
-                return t->second;
             }
             
             inline Real &hhess(const Id minid, const Id maxid) {
                 return minid != maxid ? this->tri(minid, maxid) : this->diag(minid).hhess;
             }
             
-            inline Real hhess_get(const Id id1, const Id id2) const {
+            inline const Real &hhess_get(const Id id1, const Id id2) const noexcept {
                 return id1 != id2 ? this->tri_get(std::min(id1, id2), std::max(id1, id2)) : this->diag_get(id1).hhess;
             }
             
             using DiagIt = typename std::map<Id, Diag>::iterator;
         
-            inline DiagIt dbegin() {
-                return nodes.begin();
+            inline DiagIt dbegin() noexcept {
+                return diagmap.begin();
             }
         
-            inline DiagIt dend() {
-                return nodes.end();
+            inline DiagIt dend() noexcept {
+                return diagmap.end();
             }
             
             using ConstDiagIt = typename std::map<Id, Diag>::const_iterator;
 
-            inline ConstDiagIt cdbegin() const {
-                return nodes.cbegin();
+            inline ConstDiagIt cdbegin() const noexcept {
+                return diagmap.cbegin();
             }
         
-            inline ConstDiagIt cdend() const {
-                return nodes.cend();
+            inline ConstDiagIt cdend() const noexcept {
+                return diagmap.cend();
             }
             
-            class TriIt {
-            private:
-                typename std::map<Id, Diag>::iterator itnmin;
-                typename std::map<Id, Diag>::iterator itnmax;
-                const typename std::map<Id, Diag>::iterator itnend;
-                typename std::map<Id, Real>::iterator ithhess;
-        
-                void update_itnmax(const Id id) noexcept {
-                    for (; this->itnmax->first != id; ++this->itnmax) {
-                        assert(this->itnmax != this->itnend);
-                    }
-                }
-            
-                void update() {
-                    this->itnmax = this->itnmin;
-                    if (this->itnmin != this->itnend) {
-                        this->ithhess = this->itnmin->second.row.begin();
-                        if (this->ithhess != this->itnmin->second.row.end()) {
-                            this->update_itnmax(this->ithhess->first);
-                        }
-                    }
-                }
-            
-            public:            
-                TriIt(const typename std::map<Id, Diag>::iterator &nodes_begin,
-                      const typename std::map<Id, Diag>::iterator &nodes_end):
-                itnend {nodes_end} {
-                    for (this->itnmin = nodes_begin; this->itnmin != nodes_end; ++(this->itnmin)) {
-                        if (this->itnmin->second.row.size() > 0) {
-                            break;
-                        }
-                    }
-                    this->update();
-                }
-                
-                inline explicit TriIt(
-                    const typename std::map<Id, Diag>::iterator &nodes_end
-                ): itnend {nodes_end}, itnmin {nodes_end}, itnmax {nodes_end} {
-                    ;
-                }
-                
-                void operator++() {
-                    assert(this->itnmin != this->itnend);
-                    assert(this->ithhess != this->itnmin->second.row.end());
-                    ++this->ithhess;
-                    if (this->ithhess == this->itnmin->second.row.end()) {
-                        ++this->itnmin;
-                        this->update();
-                    }
-                }
-                
-                inline Real &operator*() const noexcept {
-                    assert(this->itnmin != this->itnend);
-                    assert(this->ithhess != this->itnmin->second.row.end());
-                    return this->ithhess->second;
-                }
-                
-                inline Real *operator->() const noexcept {
-                    return &(this->operator*());
-                }
-                
-                inline Id id1() const noexcept {
-                    assert(this->itnmin != this->itnend);
-                    return this->itnmin->first;
-                }
-                
-                inline Id id2() const noexcept {
-                    assert(this->itnmax != this->itnend);
-                    return this->itnmax->first;
-                }
-                
-                inline const Diag &diag1() const noexcept {
-                    assert(this->itnmin != this->itnend);
-                    return this->itnmin->second;
-                }
-                
-                inline const Diag &diag2() const noexcept {
-                    assert(this->itnmax != this->itnend);
-                    return this->itnmax->second;
-                }
-                
-                // IMPORTANT:
-                // operator!= is for iterating
-                // operator<= and operator== are for comparing ids of iterators
-                // from different objects
-                                
-                inline friend bool operator!=(const TriIt &it1, const TriIt &it2) noexcept {
-                    if (it1.itnmin != it2.itnmin and it1.itnmax != it2.itnmax) {
-                        assert(it1.ithhess != it2.ithhess);
-                        return true;
-                    }
-                    // do not check because ithhess can not be set to nullptr
-                    // so the end interator has a random ithhess
-                    // assert(it1.ithhess != it2.ithhess)
-                    return false;
-                }
-                
-                inline friend bool operator<=(const TriIt &it1, const TriIt &it2) noexcept {
-                    return it1.id1() < it2.id1() || (it1.id1() == it2.id1() && it1.id2() <= it2.id2());
-                }
-                
-                inline friend bool operator==(const TriIt &it1, const TriIt &it2) noexcept {
-                    return it1.id1() == it2.id1() and it1.id2() == it2.id2();
-                }
-            };
-        
-            TriIt tbegin() {
-                return TriIt(nodes.begin(), nodes.end());
-            }
-        
-            inline TriIt tend() {
-                return TriIt(nodes.end());
-            }
-
             class ConstTriIt {
             private:
-                typename std::map<Id, Diag>::const_iterator itnmin;
-                typename std::map<Id, Diag>::const_iterator itnmax;
-                const typename std::map<Id, Diag>::const_iterator itnend;
-                typename std::map<Id, Real>::const_iterator ithhess;
-                bool skip;
+                typename std::map<Id, Diag>::const_iterator diagmin;
+                typename std::map<Id, Diag>::const_iterator diagmax;
+                const typename std::map<Id, Diag>::const_iterator diagend;
+                typename std::map<IdPair, Real>::const_iterator tri;
+                const typename std::map<IdPair, Real>::const_iterator triend;
+                const bool skipmissing = true;
+                
+                void update_diag() {
+                    if (tri != triend) {
+                        for (; diagmin != diagend and diagmin->first < tri->first.first; ++diagmin) ;
+                        assert(diagmin != diagend && diagmin->first == tri->first.first);
+                        for (diagmax = diagmin; diagmax != diagend and diagmax->first < tri->first.second; ++diagmax) ;
+                        assert(diagmax != diagend && diagmax->first == tri->first.second);
+                    } else {
+                        diagmin = diagend;
+                        diagmax = diagend;
+                    }
+                }
                     
-                void update_itnmax_skip(const Id id) noexcept {
-                    for (; this->itnmax->first != id; ++this->itnmax) {
-                        assert(this->itnmax != this->itnend);
-                    }
-                }
-            
-                void update_skip() {
-                    this->itnmax = this->itnmin;
-                    if (this->itnmin != this->itnend) {
-                        this->ithhess = this->itnmin->second.row.begin();
-                        if (this->ithhess != this->itnmin->second.row.end()) {
-                            this->update_itnmax_skip(this->ithhess->first);
-                        }
-                    }
-                }
-            
             public:            
                 ConstTriIt(
-                    const typename std::map<Id, Diag>::const_iterator &nodes_begin,
-                    const typename std::map<Id, Diag>::const_iterator &nodes_end,
+                    const typename std::map<Id, Diag>::const_iterator &diag_begin,
+                    const typename std::map<Id, Diag>::const_iterator &diag_end,
+                    const typename std::map<IdPair, Real>::const_iterator &tri_begin,
+                    const typename std::map<IdPair, Real>::const_iterator &tri_end,
                     const bool skipzero
-                ): itnend {nodes_end}, skip {skipzero} {
-                    if (this->skip) {
-                        for (this->itnmin = nodes_begin; this->itnmin != nodes_end; ++(this->itnmin)) {
-                            if (this->itnmin->second.row.size() > 0) {
-                                break;
-                            }
-                        }
-                        this->update_skip();
-                    } else {
-                        this->itnmin = nodes_begin;
-                        this->itnmax = this->itnmin;
-                        if (this->itnmax != this->itnend) {
-                            ++(this->itnmax);
-                            this->ithhess = this->itnmin->second.row.begin();
-                        }
+                ) noexcept:
+                diagend {diag_end}, triend {tri_end}, skipmissing {skipzero},
+                diagmin {diag_begin}, diagmax {diag_begin}, tri {tri_begin} {
+                    if (skipmissing) {
+                        this->update_diag();
                     }
                 }
                 
-                inline explicit ConstTriIt(
-                    const typename std::map<Id, Diag>::const_iterator &nodes_end
-                ): itnend {nodes_end}, itnmin {nodes_end}, itnmax {nodes_end} {
+                inline ConstTriIt(
+                    const typename std::map<Id, Diag>::const_iterator &diag_end,
+                    const typename std::map<IdPair, Real>::const_iterator &tri_end
+                ) noexcept:
+                diagend {diag_end}, triend {tri_end},
+                diagmin {diag_end}, diagmax {diag_end}, tri {tri_end} {
                     ;
                 }
                 
-                void operator++() {
-                    if (this->skip) {
-                        assert(this->itnmin != this->itnend);
-                        assert(this->ithhess != this->itnmin->second.row.end());
-                        ++this->ithhess;
-                        if (this->ithhess == this->itnmin->second.row.end()) {
-                            ++this->itnmin;
-                            this->update_skip();
-                        }
+                void operator++() noexcept {
+                    if (skipmissing) {
+                        ++tri;
+                        this->update_diag();
                     } else {
-                        assert(this->itnmax != this->itnend);
-                        ++(this->itnmax);
-                        if (this->itnmax != this->itnend) {
-                            for (; this->ithhess != this->itnmin->second.row.end(); ++(this->ithhess)) {
-                                if (this->ithhess->first >= this->itnmax->first) {
-                                    break;
-                                }
-                            }
-                        } else {
-                            ++(this->itnmin);
-                            this->itnmax = this->itnmin;
-                            if (this->itnmax != this->itnend) {
-                                ++(this->itnmax);
-                                this->ithhess = this->itnmin->second.row.begin();   
+                        ++diagmax;
+                        if (diagmax == diagend) {
+                            ++diagmin;
+                            diagmax = diagmin;
+                            if (diagmax != diagend && ++diagmax != diagend) {
+                                const IdPair id {diagmin->first, diagmax->first};
+                                for (; tri != triend && tri->first < id; ++tri) ;
                             }
                         }
                     }
                 }
                 
-                Real operator*() const noexcept {
-                    if (this->skip) {
-                        assert(this->itnmin != this->itnend);
-                        assert(this->ithhess != this->itnmin->second.row.end());
-                        return this->ithhess->second;
-                    }
-                    assert(this->itnmax != this->itnend);
-                    if (this->ithhess != this->itnmin->second.row.end() && this->ithhess->first == this->itnmax->first) {
-                        return this->ithhess->second;
+                const Real &operator*() const noexcept {
+                    if (skipmissing) {
+                        assert(tri != triend);
+                        return tri->second;
                     } else {
-                        return 0;
+                        assert(diagmin != diagend and diagmax != diagend);
+                        const IdPair id {diagmin->first, diagmax->first};
+                        if (tri != triend && tri->first == id) {
+                            return tri->second;
+                        } else {
+                            return zero;
+                        }
                     }
                 }
                 
                 inline Id id1() const noexcept {
-                    assert(this->itnmin != this->itnend);
-                    return this->itnmin->first;
+                    assert(diagmin != diagend);
+                    return diagmin->first;
                 }
                 
                 inline Id id2() const noexcept {
-                    assert(this->itnmax != this->itnend);
-                    return this->itnmax->first;
+                    assert(diagmax != diagend);
+                    return diagmax->first;
                 }
                 
-                inline std::pair<Id, Id> id() const noexcept {
+                inline IdPair id() const noexcept {
                     assert(this->id1() < this->id2());
                     return {this->id1(), this->id2()};
                 }
                 
                 inline const Diag &diag1() const noexcept {
-                    assert(this->itnmin != this->itnend);
-                    return this->itnmin->second;
+                    assert(diagmin != diagend);
+                    return diagmin->second;
                 }
                 
                 inline const Diag &diag2() const noexcept {
-                    assert(this->itnmax != this->itnend);
-                    return this->itnmax->second;
+                    assert(diagmax != diagend);
+                    return diagmax->second;
                 }
                 
                 inline friend bool operator!=(const ConstTriIt &it1, const ConstTriIt &it2) noexcept {
-                    return it1.itnmin != it2.itnmin and it1.itnmax != it2.itnmax;
+                    assert(it1.diagend == it2.diagend and it1.triend == it2.triend);
+                    return it1.diagmin != it2.diagmin and it1.diagmax != it2.diagmax;
                 }
 
-                inline friend bool operator<=(const ConstTriIt &it1, const ConstTriIt &it2) noexcept {
-                    return it1.id1() < it2.id1() || (it1.id1() == it2.id1() && it1.id2() <= it2.id2());
-                }
-                
-                inline friend bool operator==(const ConstTriIt &it1, const ConstTriIt &it2) noexcept {
-                    return it1.id1() == it2.id1() and it1.id2() == it2.id2();
-                }
+                // inline friend bool operator<=(const ConstTriIt &it1, const ConstTriIt &it2) noexcept {
+                //     return it1.id1() < it2.id1() || (it1.id1() == it2.id1() && it1.id2() <= it2.id2());
+                // }
+                //
+                // inline friend bool operator==(const ConstTriIt &it1, const ConstTriIt &it2) noexcept {
+                //     return it1.id1() == it2.id1() and it1.id2() == it2.id2();
+                // }
             };
             
-            ConstTriIt ctbegin(const bool skipzero) const {
-                return ConstTriIt(nodes.cbegin(), nodes.cend(), skipzero);
+            ConstTriIt ctbegin(const bool skipzero) const noexcept {
+                return ConstTriIt(diagmap.cbegin(), diagmap.cend(), trimap.cbegin(), trimap.cend(), skipzero);
             }
         
-            inline ConstTriIt ctend() const {
-                return ConstTriIt(nodes.cend());
+            inline ConstTriIt ctend() const noexcept {
+                return ConstTriIt(diagmap.cend(), trimap.cend());
             }
             
             class ConstHessIt {
             private:
-                const typename std::map<Id, Diag>::const_iterator end;
-                typename std::map<Id, Diag>::const_iterator itmin;
-                typename std::map<Id, Diag>::const_iterator itmax;
-                typename std::map<Id, Real>::const_iterator ittri;
-                bool ondiag = true;
-                const bool skip = true;
+                typename std::map<Id, Diag>::const_iterator diagmin;
+                typename std::map<Id, Diag>::const_iterator diagmax;
+                const typename std::map<Id, Diag>::const_iterator diagend;
+                typename std::map<IdPair, Real>::const_iterator tri;
+                const typename std::map<IdPair, Real>::const_iterator triend;
+                const bool skipmissing = true;
                 
-            public:
-                ConstHessIt(const typename std::map<Id, Diag>::const_iterator &nodes_begin,
-                            const typename std::map<Id, Diag>::const_iterator &nodes_end,
-                            const bool skipzero):
-                end {nodes_end}, itmin {nodes_begin}, itmax {nodes_begin},
-                skip {skipzero} {
-                    ;
-                }
-                
-                ConstHessIt(const typename std::map<Id, Diag>::const_iterator &nodes_end):
-                end {nodes_end}, itmin {nodes_end}, itmax {nodes_end} {
-                    ;
-                }
-                
-                void operator++() {
-                    assert(itmin != end);
-                    assert(itmax != end);
-                    if (skip) {
-                        if (ondiag) {
-                            ittri = itmin->second.row.cbegin();
-                            if (ittri != itmin->second.row.cend()) {
-                                ondiag = false;
-                            } else {
-                                ++itmin;
-                                itmax = itmin;
-                            }
-                        } else {
-                            ++ittri;
-                            if (ittri == itmin->second.row.cend()) {
-                                ++itmin;
-                                itmax = itmin;
-                                ondiag = true;
-                            }
-                        }
-                        if (not ondiag) {
-                            for (; itmax->first < ittri->first; ++itmax) ;
-                            assert(itmax->first == ittri->first);
-                        }
+                void update_diag() {
+                    if (tri != triend) {
+                        for (; diagmin != diagend and diagmin->first < tri->first.first; ++diagmin) ;
+                        assert(diagmin != diagend && diagmin->first == tri->first.first);
+                        for (diagmax = diagmin; diagmax != diagend and diagmax->first < tri->first.second; ++diagmax) ;
+                        assert(diagmax != diagend && diagmax->first == tri->first.second);
                     } else {
-                        if (ondiag) {
-                            ittri = itmin->second.row.cbegin();
-                            ++itmax;
-                            ondiag = false;
-                        } else {
-                            ++itmax;
-                            if (itmax == end) {
-                                ++itmin;
-                                itmax = itmin;
-                                ondiag = true;
-                            } else {
-                                const auto triend = itmin->second.row.cend();
-                                while (ittri != triend && ittri->first < itmax->first) {
-                                    ++ittri;
-                                }
-                            }
-                        }
+                        diagmin = diagend;
+                        diagmax = diagend;
                     }
                 }
+                    
+            public:            
+                ConstHessIt(
+                    const typename std::map<Id, Diag>::const_iterator &diag_begin,
+                    const typename std::map<Id, Diag>::const_iterator &diag_end,
+                    const typename std::map<IdPair, Real>::const_iterator &tri_begin,
+                    const typename std::map<IdPair, Real>::const_iterator &tri_end,
+                    const bool skipzero
+                ) noexcept:
+                diagend {diag_end}, triend {tri_end}, skipmissing {skipzero},
+                diagmin {diag_begin}, diagmax {diag_begin}, tri {tri_begin} {
+                    ;
+                }
                 
-                Real operator*() const noexcept {
-                    assert(itmin != end);
-                    assert(itmax != end);
-                    if (ondiag) {
-                        assert(itmax == itmin);
-                        return itmin->second.hhess;
+                inline ConstHessIt(
+                    const typename std::map<Id, Diag>::const_iterator &diag_end,
+                    const typename std::map<IdPair, Real>::const_iterator &tri_end
+                ) noexcept:
+                diagend {diag_end}, triend {tri_end},
+                diagmin {diag_end}, diagmax {diag_end}, tri {tri_end} {
+                    ;
+                }
+                
+                void operator++() noexcept {
+                    assert(diagmin != diagend and diagmax != diagend);
+                    if (diagmin == diagmax) {
+                        ++diagmax;
                     } else {
-                        assert(itmin->first <= itmax->first);
-                        const auto triend = itmin->second.row.cend();
-                        assert(ittri == triend || ittri->first >= itmax->first);
-                        if (ittri != triend && ittri->first == itmax->first) {
-                            return ittri->second;
-                        } else {
-                            return 0;
-                        }
+                        ++tri;
+                    }
+                    assert(diagmax != diagend or tri == triend);
+                    assert((tri == triend || tri->first >= IdPair {diagmin->first, diagmax->first}));
+                    if (tri == triend || tri->first.first > diagmin->first) {
+                        ++diagmin;
+                        diagmax = diagmin;
+                    } else if (skipmissing) {
+                        for (; diagmax != diagend && diagmax->first < tri->first.second; ++diagmax) ;
+                        assert(diagmax != diagend && diagmax->first == tri->first.second);
+                    }
+                    assert(diagmax != diagend or diagmin == diagend);
+                }
+                
+                const Real &operator*() const noexcept {
+                    assert(diagmin != diagend and diagmax != diagend);
+                    assert(diagmin == diagmax or not skipmissing or tri != triend);
+                    if (diagmin == diagmax) {
+                        return diagmin->second.hhess;
+                    } else if (skipmissing) {
+                        return tri->second;
+                    } else if (tri != triend && tri->first == IdPair {diagmin->first, diagmax->first}) {
+                        return tri->second;
+                    } else {
+                        return zero;
                     }
                 }
                 
                 inline Id id1() const noexcept {
-                    assert(itmin != end);
-                    return itmin->first;
+                    assert(diagmin != diagend);
+                    return diagmin->first;
                 }
                 
                 inline Id id2() const noexcept {
-                    assert(itmax != end);
-                    return itmax->first;
+                    assert(diagmax != diagend);
+                    return diagmax->first;
+                }
+                
+                inline IdPair id() const noexcept {
+                    assert(this->id1() < this->id2());
+                    return {this->id1(), this->id2()};
                 }
                 
                 inline const Diag &diag1() const noexcept {
-                    assert(itmin != end);
-                    return itmin->second;
+                    assert(diagmin != diagend);
+                    return diagmin->second;
                 }
                 
                 inline const Diag &diag2() const noexcept {
-                    assert(itmax != end);
-                    return itmax->second;
+                    assert(diagmax != diagend);
+                    return diagmax->second;
                 }
                 
                 inline friend bool operator!=(const ConstHessIt &it1, const ConstHessIt &it2) noexcept {
-                    assert(it1.end == it2.end);
-                    return it1.itmin != it2.itmin and it1.itmax != it2.itmax;
+                    assert(it1.diagend == it2.diagend and it1.triend == it2.triend);
+                    return it1.diagmin != it2.diagmin and it1.diagmax != it2.diagmax;
                 }
             };
-            
-            ConstHessIt chbegin(const bool skipzero) const {
-                return ConstHessIt(this->nodes.begin(), this->nodes.end(), skipzero);
-            }
-            
-            ConstHessIt chend() const {
-                return ConstHessIt(this->nodes.end());
-            }
 
+            ConstHessIt chbegin(const bool skipzero) const noexcept {
+                return ConstHessIt(diagmap.cbegin(), diagmap.cend(), trimap.cbegin(), trimap.cend(), skipzero);
+            }
+        
+            inline ConstHessIt chend() const noexcept {
+                return ConstHessIt(diagmap.cend(), trimap.cend());
+            }
+            
             template<typename OtherReal>
             friend class HessGrad;
             
@@ -532,6 +390,12 @@ namespace uncertainties {
                 return hg;
             }
         };
+        
+        template<typename Real>
+        const Real HessGrad<Real>::zero {0};
+    
+        template<typename Real>
+        const typename HessGrad<Real>::Diag HessGrad<Real>::zerodiag;
     }
 }
 

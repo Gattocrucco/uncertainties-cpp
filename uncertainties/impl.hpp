@@ -52,7 +52,6 @@ namespace uncertainties {
         std::string format_exp(const int e) {
             return (e > 0 ? "+" : "-") + std::to_string(std::abs(e));
         }
-
     }
 }
 

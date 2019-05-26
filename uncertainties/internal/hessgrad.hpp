@@ -33,12 +33,12 @@
 namespace uncertainties {
     namespace internal {
         template<typename Real>
-        using M7P = std::shared_ptr<std::array<Real, 7>>;
+        using Moments = std::shared_ptr<std::array<Real, 6>>;
     
         template<int n, typename Real>
-        inline const Real &v(const M7P<Real> &p) noexcept {
-            static_assert(n >= 2 and n <= 8, "it must be 2 <= n <= 8");
-            return std::get<n - 2>(*p);
+        inline const Real &v(const Moments<Real> &p) noexcept {
+            static_assert(n >= 3 and n <= 8, "it must be 3 <= n <= 8");
+            return std::get<n - 3>(*p);
         }
     
         template<typename Real>
@@ -47,7 +47,7 @@ namespace uncertainties {
             struct Diag {
                 Real grad {0};
                 Real hhess {0}; // half second derivative
-                M7P<Real> mom;
+                Moments<Real> mom;
             };
             
             using IdPair = std::pair<Id, Id>;
@@ -237,14 +237,6 @@ namespace uncertainties {
                     assert(it1.diagend == it2.diagend and it1.triend == it2.triend);
                     return it1.diagmin != it2.diagmin and it1.diagmax != it2.diagmax;
                 }
-
-                // inline friend bool operator<=(const ConstTriIt &it1, const ConstTriIt &it2) noexcept {
-                //     return it1.id1() < it2.id1() || (it1.id1() == it2.id1() && it1.id2() <= it2.id2());
-                // }
-                //
-                // inline friend bool operator==(const ConstTriIt &it1, const ConstTriIt &it2) noexcept {
-                //     return it1.id1() == it2.id1() and it1.id2() == it2.id2();
-                // }
             };
             
             ConstTriIt ctbegin(const bool skipzero) const noexcept {
@@ -376,16 +368,16 @@ namespace uncertainties {
             template<typename OtherReal>
             operator HessGrad<OtherReal>() const {
                 HessGrad<OtherReal> hg;
-                for (const auto &it : this->nodes) {
-                    typename HessGrad<OtherReal>::Diag &node = hg.nodes[it.first];
+                for (const auto &it : diagmap) {
+                    typename HessGrad<OtherReal>::Diag &node = hg.diagmap[it.first];
                     const Diag &diag = it.second;
                     node.grad = diag.grad;
                     node.hhess = diag.hhess;
-                    node.mom = M7P<OtherReal>(new std::array<OtherReal, 7>);
+                    node.mom = Moments<OtherReal>(new std::array<OtherReal, 6>);
                     std::copy(diag.mom->begin(), diag.mom->end(), node.mom->begin());
-                    for (const auto &it2 : it.second.row) {
-                        node.row[it2.first] = it2.second;
-                    }
+                }
+                for (const auto &it : trimap) {
+                    hg.trimap[it.first] = it.second;
                 }
                 return hg;
             }

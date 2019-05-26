@@ -34,7 +34,7 @@ namespace uncertainties {
             const ConstDiagIt dend = hg.cdend();
             for (ConstDiagIt it = hg.cdbegin(); it != dend; ++it) {
                 const Diag &d = (*it).second;
-                m += d.hhess * v<2>(d.mom);
+                m += d.hhess;
             }
             return m;
         }
@@ -55,7 +55,7 @@ namespace uncertainties {
             
             for (ConstDiagIt it = hg.cdbegin(); it != hg.cdend(); ++it) {
                 const Diag &d = (*it).second;
-                m += d.grad * d.grad * v<2>(d.mom);
+                m += d.grad * d.grad;
                 m += 2 * d.grad * d.hhess * v<3>(d.mom);
                 m += d.hhess * d.hhess * v<4>(d.mom);
             }
@@ -65,7 +65,7 @@ namespace uncertainties {
                 const Diag &d1 = it.diag1();
                 const Diag &d2 = it.diag2();
                 const Real &hhess = *it;
-                m += 2 * (d1.hhess * d2.hhess + 2 * hhess * hhess) * v<2>(d1.mom) * v<2>(d2.mom);
+                m += 2 * (d1.hhess * d2.hhess + 2 * hhess * hhess);
             }
             return m;
         }
@@ -102,7 +102,7 @@ namespace uncertainties {
             for (ConstDiagIt it = hg.cdbegin(); it != dend; ++it) {
                 const Real &grad = it->second.grad;
                 const Real &hhess = it->second.hhess;
-                const M7P<Real> &mom = it->second.mom;
+                const Moments<Real> &mom = it->second.mom;
                 m += grad * grad * grad * v<3>(mom); // A1
                 m += 3 * grad * grad * hhess * v<4>(mom); // A2
                 m += 3 * grad * hhess * hhess * v<5>(mom); // A3
@@ -113,21 +113,20 @@ namespace uncertainties {
                 for (++it2; it2 != dend; ++it2) {
                     const Real &grad2 = it2->second.grad;
                     const Real &hhess2 = it2->second.hhess;
-                    const M7P<Real> &mom2 = it2->second.mom;
-                    m += 3 * grad2 * grad2 * hhess * v<2>(mom) * v<2>(mom2); // B1(i, j)
-                    m += 3 * grad * grad * hhess2 * v<2>(mom) * v<2>(mom2); // B1(j, i)
-                    m += 6 * grad * hhess * hhess2 * v<3>(mom) * v<2>(mom2); // B2(i, j)
-                    m += 6 * grad2 * hhess2 * hhess * v<3>(mom2) * v<2>(mom); // B2(j, i)
-                    m += 3 * hhess * hhess * hhess2 * v<4>(mom) * v<2>(mom2); // B3(i, j)
-                    m += 3 * hhess2 * hhess2 * hhess * v<4>(mom2) * v<2>(mom); // B3(j, i)
+                    const Moments<Real> &mom2 = it2->second.mom;
+                    m += 3 * grad2 * grad2 * hhess; // B1(i, j)
+                    m += 3 * grad * grad * hhess2; // B1(j, i)
+                    m += 6 * grad * hhess * hhess2 * v<3>(mom); // B2(i, j)
+                    m += 6 * grad2 * hhess2 * hhess * v<3>(mom2); // B2(j, i)
+                    m += 3 * hhess * hhess * hhess2 * v<4>(mom); // B3(i, j)
+                    m += 3 * hhess2 * hhess2 * hhess * v<4>(mom2); // B3(j, i)
                     
                     // CYCLE C
                     ConstDiagIt it3 = it2;
                     for (++it3; it3 != dend; ++it3) {
                         const Real &grad3 = it3->second.grad;
                         const Real &hhess3 = it3->second.hhess;
-                        const M7P<Real> &mom3 = it3->second.mom;
-                        m += 6 * hhess * hhess2 * hhess3 * v<2>(mom) * v<2>(mom2) * v<2>(mom3); // C1
+                        m += 6 * hhess * hhess2 * hhess3; // C1
                     }
                 }
                 
@@ -140,7 +139,7 @@ namespace uncertainties {
                         continue;
                     }
                     const Real &hhess2 = *it2;
-                    m += 2 * 6 * hhess * hhess2 * hhess2 * v<2>(mom) * v<2>(it2.diag1().mom) * v<2>(it2.diag2().mom); // F1
+                    m += 2 * 6 * hhess * hhess2 * hhess2; // F1
                 }
             }
             
@@ -149,13 +148,13 @@ namespace uncertainties {
                 const Diag &d1 = it.diag1();
                 const Diag &d2 = it.diag2();
                 const Real hhess = *it;
-                m += 2 * 6 * d1.grad * d2.grad * hhess * v<2>(d1.mom) * v<2>(d2.mom); // D1
-                m += 12 * d2.grad * d1.hhess * hhess * v<3>(d1.mom) * v<2>(d2.mom); // D2(i, j)
-                m += 12 * d1.grad * d2.hhess * hhess * v<3>(d2.mom) * v<2>(d1.mom); // D2(j, i)
-                m += 12 * d1.grad * hhess * hhess * v<3>(d1.mom) * v<2>(d2.mom); // D3(i, j)
-                m += 12 * d2.grad * hhess * hhess * v<3>(d2.mom) * v<2>(d1.mom); // D3(j, i)
-                m += 12 * d1.hhess * hhess * hhess * v<4>(d1.mom) * v<2>(d2.mom); // D4(i, j)
-                m += 12 * d2.hhess * hhess * hhess * v<4>(d2.mom) * v<2>(d1.mom); // D4(j, i)
+                m += 2 * 6 * d1.grad * d2.grad * hhess; // D1
+                m += 12 * d2.grad * d1.hhess * hhess * v<3>(d1.mom); // D2(i, j)
+                m += 12 * d1.grad * d2.hhess * hhess * v<3>(d2.mom); // D2(j, i)
+                m += 12 * d1.grad * hhess * hhess * v<3>(d1.mom); // D3(i, j)
+                m += 12 * d2.grad * hhess * hhess * v<3>(d2.mom); // D3(j, i)
+                m += 12 * d1.hhess * hhess * hhess * v<4>(d1.mom); // D4(i, j)
+                m += 12 * d2.hhess * hhess * hhess * v<4>(d2.mom); // D4(j, i)
                 m += 2 * 4 * hhess * hhess * hhess * v<3>(d1.mom) * v<3>(d2.mom); // D5
                 m += 2 * 6 * d1.hhess * hhess * d2.hhess * v<3>(d1.mom) * v<3>(d2.mom); // D6
                 
@@ -167,7 +166,7 @@ namespace uncertainties {
                     // and jk manually
                     const Real hhess2 = *it2;
                     const Real hhess3 = hg.tri_get(it.id2(), it2.id2());
-                    m += 6 * 8 * hhess * hhess2 * hhess3 * v<2>(d1.mom) * v<2>(d2.mom) * v<2>(it2.diag2().mom); // E1
+                    m += 6 * 8 * hhess * hhess2 * hhess3; // E1
                 }
             }
             return m;
@@ -219,7 +218,7 @@ namespace uncertainties {
                     const Diag &da = ita->second;
                     const Diag &db = itb->second;
                     assert(da.mom.get() == db.mom.get());
-                    m += da.grad * db.grad * v<2>(da.mom); // A1
+                    m += da.grad * db.grad; // A1
                     m += da.hhess * db.grad * v<3>(da.mom); // A2
                     m += da.grad * db.hhess * v<3>(da.mom); // A3
                     m += da.hhess * db.hhess * v<4>(da.mom); // A4
@@ -237,7 +236,7 @@ namespace uncertainties {
                 const std::pair<Id, Id> ida = tita.id();
                 const std::pair<Id, Id> idb = titb.id();
                 if (ida == idb) {
-                    m += 2 * 2 * (*tita) * (*titb) * v<2>(tita.diag1().mom) * v<2>(titb.diag2().mom); // B1
+                    m += 2 * 2 * (*tita) * (*titb); // B1
                 }
                 if (ida <= idb) ++tita;
                 if (ida <= idb) ++titb;
@@ -250,7 +249,7 @@ namespace uncertainties {
                     if (ita->first != itb->first) {
                         const Diag &da = ita->second;
                         const Diag &db = itb->second;
-                        m += da.hhess * db.hhess * v<2>(da.mom) * v<2>(db.mom); // C1
+                        m += da.hhess * db.hhess; // C1
                     }
                 }
             }

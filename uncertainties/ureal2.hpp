@@ -26,9 +26,9 @@
 #include <algorithm>
 #include <utility>
 #include <memory>
-#include <type_traits>
 #include <cassert>
 #include <limits>
+#include <sstream>
 
 #include "core.hpp"
 #include "internal/hessgrad.hpp"
@@ -62,11 +62,31 @@ namespace uncertainties {
         
         UReal2(const Real &n, const std::array<Real, 7> &moments):
         mu {n} {
+            bool anyzero = false, allzero = true;
+            for (int i = 0; i < 7; i += 2) {
+                if (moments[i] < 0) {
+                    std::ostringstream s;
+                    s << "uncertainties::UReal2::UReal2: moment " << i + 2 << " < 0";
+                    throw std::invalid_argument(s.str());
+                }
+                anyzero = anyzero or moments[i] == 0;
+                allzero = allzero and moments[i] == 0;
+            }
+            if (anyzero and not allzero) {
+                std::ostringstream s;
+                s << "uncertainties::UReal2::UReal2: ";
+                s << "there are both zero and nonzero even moments";
+                throw std::invalid_argument(s.str());
+            }
             const Id id = ++internal::last_id;
             Diag &diag = this->hg.diag(id);
-            diag.grad = 1;
+            using std::sqrt;
+            diag.grad = sqrt(moments[0]);
             diag.hhess = 0;
-            diag.mom = internal::M7P<Real>(new std::array<Real, 7>(moments));
+            diag.mom = internal::Moments<Real>(new std::array<Real, 6>);
+            for (int i = 0; i < 6; ++i) {
+                (*diag.mom)[i] = diag.grad > 0 ? moments[i + 1] / diag.grad : 0;
+            }
             std::copy(moments.begin(), moments.begin() + 3, this->mom.begin() + 1);
         }
         
@@ -178,7 +198,7 @@ namespace uncertainties {
             return x;
         }
         
-        friend Real cov(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {
+        inline friend Real cov(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) noexcept {
             return internal::compute_c2(x.hg, y.hg);
         }
         

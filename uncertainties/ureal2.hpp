@@ -179,7 +179,7 @@ namespace uncertainties {
         }
         
         friend Real cov(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {
-            return 0;
+            return internal::compute_c2(x.hg, y.hg);
         }
         
         Real _grad(const UReal2<Real, prop> &x) const {

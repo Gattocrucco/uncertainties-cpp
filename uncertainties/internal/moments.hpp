@@ -190,6 +190,73 @@ namespace uncertainties {
                 return 0;
             }
         }
+        
+        template<typename Real>
+        Real compute_c2(const HessGrad<Real> &hga, const HessGrad<Real> &hgb) {
+            using ConstDiagIt = typename HessGrad<Real>::ConstDiagIt;
+            using ConstTriIt = typename HessGrad<Real>::ConstTriIt;
+            using Diag = typename HessGrad<Real>::Diag;
+            
+            // formula:
+            // A1)  G(a)_i G(b)_i V_ii + 
+            // A2)  H(a)_ii G(b)_i V_iii + 
+            // A3)  G(a)_i H(b)_ii V_iii + 
+            // A4)  H(a)_ii H(b)_ii V_iiii + 
+            // B1)  2 H(a)_ij H(b)_ij V_iijj +
+            // C1)  H(a)_ii H(b)_jj V_iijj
+            
+            Real m(0);
+            
+            // CYCLE A
+            const ConstDiagIt denda = hga.cdend();
+            const ConstDiagIt dendb = hgb.cdend();
+            ConstDiagIt ita = hga.cdbegin();
+            ConstDiagIt itb = hgb.cdbegin();
+            while (ita != denda and itb != dendb) {
+                const Id ida = ita->first;
+                const Id idb = itb->first;
+                if (ida == idb) {
+                    const Diag &da = ita->second;
+                    const Diag &db = itb->second;
+                    assert(da.mom.get() == db.mom.get());
+                    m += da.grad * db.grad * v<2>(da.mom); // A1
+                    m += da.hhess * db.grad * v<3>(da.mom); // A2
+                    m += da.grad * db.hhess * v<3>(da.mom); // A3
+                    m += da.hhess * db.hhess * v<4>(da.mom); // A4
+                }
+                if (ida <= idb) ++ita;
+                if (ida <= idb) ++itb;
+            }
+            
+            // CYCLE B
+            const ConstTriIt tenda = hga.ctend();
+            const ConstTriIt tendb = hgb.ctend();
+            ConstTriIt tita = hga.ctbegin(true);
+            ConstTriIt titb = hgb.ctbegin(true);
+            while (tita != tenda and titb != tendb) {
+                const std::pair<Id, Id> ida = tita.id();
+                const std::pair<Id, Id> idb = titb.id();
+                if (ida == idb) {
+                    m += 2 * 2 * (*tita) * (*titb) * v<2>(tita.diag1().mom) * v<2>(titb.diag2().mom); // B1
+                }
+                if (ida <= idb) ++tita;
+                if (ida <= idb) ++titb;
+            }
+            
+            // CYCLE C
+            // Could be made more efficient with a find on the hgb nodes.
+            for (ita = hga.cdbegin(); ita != denda; ++ita) {
+                for (itb = hgb.cdbegin(); itb != dendb; ++itb) {
+                    if (ita->first != itb->first) {
+                        const Diag &da = ita->second;
+                        const Diag &db = itb->second;
+                        m += da.hhess * db.hhess * v<2>(da.mom) * v<2>(db.mom); // C1
+                    }
+                }
+            }
+            
+            return m;
+        }
     }
 }
 

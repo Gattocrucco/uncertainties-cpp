@@ -356,6 +356,11 @@ namespace uncertainties {
                     return this->itnmax->first;
                 }
                 
+                inline std::pair<Id, Id> id() const noexcept {
+                    assert(this->id1() < this->id2());
+                    return {this->id1(), this->id2()};
+                }
+                
                 inline const Diag &diag1() const noexcept {
                     assert(this->itnmin != this->itnend);
                     return this->itnmin->second;

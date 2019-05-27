@@ -33,7 +33,7 @@ namespace uncertainties {
             Real m(0);
             const ConstDiagIt dend = hg.cdend();
             for (ConstDiagIt it = hg.cdbegin(); it != dend; ++it) {
-                const Diag &d = (*it).second;
+                const Diag &d = it->second;
                 m += d.hhess;
             }
             return m;
@@ -67,6 +67,8 @@ namespace uncertainties {
                 const Real &hhess = *it;
                 m += 2 * (d1.hhess * d2.hhess + 2 * hhess * hhess);
             }
+            
+            assert(m >= 0);
             return m;
         }
 
@@ -175,9 +177,6 @@ namespace uncertainties {
         template<typename Real>
         Real compute_mom(const HessGrad<Real> &hg, const int n) {
             assert(n >= 1 and n <= 3);
-            using ConstDiagIt = typename HessGrad<Real>::ConstDiagIt;
-            using ConstTriIt = typename HessGrad<Real>::ConstTriIt;
-            using Diag = typename HessGrad<Real>::Diag;
             switch (n) {
                 case 1:
                 return compute_m1(hg);

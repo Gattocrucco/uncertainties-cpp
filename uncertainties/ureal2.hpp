@@ -170,22 +170,34 @@ namespace uncertainties {
         }
         
         Real kurt() const noexcept {
-            const Real &s2 = this->m(2);
+            const Real s2 = this->m(2);
             return this->m(4) / (s2 * s2);
         }
         
-        Real m(const int n) noexcept {
+        const Real &m(const int n) {
             const int i = n - 1;
-            if (this->mom_to_compute.at(i)) {
+            if (i < 0 or i > 3) {
+                std::ostringstream s;
+                s << "uncertainties::UReal2::m: ";
+                s << "moment order " << n << " out of range";
+                throw std::invalid_argument(s.str());
+            }
+            if (this->mom_to_compute[i]) {
                 this->mom[i] = internal::compute_mom(this->hg, n);
                 this->mom_to_compute[i] = false;
             }
             return this->mom[i];
         }
         
-        Real m(const int n) const noexcept {
+        Real m(const int n) const {
             const int i = n - 1;
-            if (this->mom_to_compute.at(i)) {
+            if (i < 0 or i > 3) {
+                std::ostringstream s;
+                s << "uncertainties::UReal2::m const: ";
+                s << "moment order " << n << " out of range";
+                throw std::invalid_argument(s.str());
+            }
+            if (this->mom_to_compute[i]) {
                 return internal::compute_mom(this->hg, n);
             } else {
                 return this->mom[i];

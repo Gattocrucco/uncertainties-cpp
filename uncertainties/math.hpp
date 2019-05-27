@@ -363,7 +363,7 @@ namespace uncertainties {
         using std::sqrt;
         const Real &xn = x.first_order_n();
         const Real sqrtx = sqrt(xn);
-        return unary(x, sqrtx, 1 / (2 * sqrtx), -1 / (2 * xn * sqrtx));
+        return unary(x, sqrtx, 1 / (2 * sqrtx), -1 / (4 * xn * sqrtx));
     }
     template<typename Real, Prop prop>
     UReal2<Real, prop> cbrt(const UReal2<Real, prop> &x) {
@@ -372,7 +372,7 @@ namespace uncertainties {
         const Real &xn = x.first_order_n();
         const Real cbrtx = cbrt(xn);
         const Real icbrt2 = 1 / (cbrtx * cbrtx);
-        return unary(x, cbrtx, icbrt2 / 3, -2 / (9 * x) * icbrt2);
+        return unary(x, cbrtx, icbrt2 / 3, -2 / (9 * xn) * icbrt2);
     }
     template<typename Real, Prop prop>
     UReal2<Real, prop> hypot(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {
@@ -420,7 +420,7 @@ namespace uncertainties {
         const Real &xn = x.first_order_n();
         const Real i1xx = 1 / (1 - xn * xn);
         const Real isqrt1xx = sqrt(i1xx);
-        return unary(x, asin(xn), isqrt1xx, x * isqrt1xx * i1xx);
+        return unary(x, asin(xn), isqrt1xx, xn * isqrt1xx * i1xx);
     }
     template<typename Real, Prop prop>
     UReal2<Real, prop> acos(const UReal2<Real, prop> &x) {
@@ -429,31 +429,33 @@ namespace uncertainties {
         const Real &xn = x.first_order_n();
         const Real i1xx = 1 / (1 - xn * xn);
         const Real isqrt1xx = sqrt(i1xx);
-        return unary(x, acos(xn), -isqrt1xx, -x * isqrt1xx * i1xx);
+        return unary(x, acos(xn), -isqrt1xx, -xn * isqrt1xx * i1xx);
     }
     template<typename Real, Prop prop>
     UReal2<Real, prop> atan(const UReal2<Real, prop> &x) {
         using std::atan;
         const Real &xn = x.first_order_n();
         const Real i1xx = 1 / (1 + xn * xn);
-        return unary(x, atan(xn), i1xx, -2 * x * i1xx * i1xx);
+        return unary(x, atan(xn), i1xx, -2 * xn * i1xx * i1xx);
     }
     template<typename Real, Prop prop>
     UReal2<Real, prop> atan2(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) {
         using std::atan2;
         const Real &xn = x.first_order_n();
         const Real &yn = y.first_order_n();
-        const Real yx = yn / xn;
-        const Real yx2 = yx * yx;
-        const Real i1yx2 = 1 / (1 + yx2);
-        const Real ix = 1 / x;
-        const Real ixi1yx2 = ix * i1yx2;
-        return binary(x, y, atan2(x, y),
-                     -yx * ixi1yx2,
-                      ixi1yx2,
-                      2 * yx * ix * ixi1yx2 * (1 + yx2 * i1yx2),
-                      -2 * yx * ixi1yx2 * ixi1yx2,
-                      ix * ixi1yx2 * (2 * yx2 * i1yx2 - 1));
+        const Real x2 = xn * xn;
+        const Real y2 = yn * yn;
+        const Real xxyy = x2 + y2;
+        const Real ixxyy = 1 / xxyy;
+        const Real xixxyy = xn * ixxyy;
+        const Real yixxyy = yn * ixxyy;
+        const Real xy2ixxyy2 = 2 * xixxyy * yixxyy;
+        return binary(x, y, atan2(xn, yn),
+                      yixxyy,
+                      -xixxyy,
+                      -xy2ixxyy2,
+                      xy2ixxyy2,
+                      (x2 - y2) * ixxyy * ixxyy);
     }
     template<typename Real, Prop prop>
     UReal2<Real, prop> sinh(const UReal2<Real, prop> &x) {
@@ -486,7 +488,7 @@ namespace uncertainties {
         const Real &xn = x.first_order_n();
         const Real i1xx = 1 / (1 + xn * xn);
         const Real sqrti1xx = sqrt(i1xx);
-        return unary(x, asinh(xn), sqrti1xx, -2 * xn * i1xx * sqrti1xx);
+        return unary(x, asinh(xn), sqrti1xx, -xn * i1xx * sqrti1xx);
     }
     template<typename Real, Prop prop>
     UReal2<Real, prop> acosh(const UReal2<Real, prop> &x) {
@@ -495,7 +497,7 @@ namespace uncertainties {
         const Real &xn = x.first_order_n();
         const Real ixx1 = 1 / (xn * xn - 1);
         const Real sqrtixx1 = sqrt(ixx1);
-        return unary(x, asinh(xn), sqrtixx1, -2 * xn * ixx1 * sqrtixx1);
+        return unary(x, acosh(xn), sqrtixx1, -xn * ixx1 * sqrtixx1);
     }
     template<typename Real, Prop prop>
     UReal2<Real, prop> atanh(const UReal2<Real, prop> &x) {

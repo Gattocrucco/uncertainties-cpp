@@ -34,7 +34,10 @@ void checkcov(const unc::UReal2<Real, prop> &x, const unc::UReal2<Real, prop> &y
 
 template<typename Real, unc::Prop prop>
 void checkmn(const unc::UReal2<Real, prop> &x, const Real &mn, const int n) {
-    const Real m = x.m(n);
+    Real m = x.m(n);
+    if (n == 1) {
+        m += x.first_order_n();
+    }
     if (not close(mn, m)) {
         std::ostringstream s;
         s << "expected m(" << n << ") = " << mn << ", got " << m;
@@ -54,7 +57,7 @@ void checkmn(const unc::UReal2<Real, prop> &x, const Real &mn, const int n) {
 
 template<typename Real, unc::Prop prop>
 void check(const unc::UReal2<Real, prop> &x, const std::initializer_list<Real> &mlist) {
-    int i = 1;
+    int i = 0;
     for (const auto &m : mlist) {
         checkmn(x, m, ++i);
     }
@@ -64,15 +67,20 @@ using namespace unc::distr;
 using utype = unc::udouble2e;
 
 int main() {
-    check(normal<utype>(1, 1), {1.0, 0.0});
-    check(normal<utype>(1, 1) + normal<utype>(4, 2), {5.0, 0.0});
+    check(normal<utype>(1, 1), {1.0, 1.0, 0.0});
+    check(normal<utype>(1, 2), {1.0, 4.0, 0.0});
+
+    check(chisquare<utype>(0), {0.0, 0.0, 0.0});
+    check(chisquare<utype>(1), {1.0, 2.0, 8.0});
+    check(chisquare<utype>(2), {2.0, 4.0, 16.0});
+    
+    check(normal<utype>(1, 1) + normal<utype>(4, 2), {5.0, 5.0, 0.0});
     utype x = normal<utype>(1, 1);
-    check(x - x, {0.0, 0.0});
-    check(x + x, {4.0, 0.0});
-    check(2 * x, {4.0, 0.0});
-    check(x + 2 * x, {9.0, 0.0});
+    check(x - x, {0.0, 0.0, 0.0});
+    check(x + x, {2.0, 4.0, 0.0});
+    check(2 * x, {2.0, 4.0, 0.0});
+    check(x + 2 * x, {3.0, 9.0, 0.0});
     checkcov(x, x, 1.0);
     checkcov(x, utype(1.0), 0.0);
     checkcov(x + x, x - x, 0.0);
-    check(normal<utype>(1, 2), {4.0, 0.0});
 }

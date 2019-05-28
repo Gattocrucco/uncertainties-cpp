@@ -22,19 +22,43 @@
 
 #include <array>
 #include <cassert>
+#include <cmath>
+#include <sstream>
 
 #include "core.hpp"
 
 namespace uncertainties {
-    namespace internal {
-        inline int binom_coeff(const int n, const int k) {
-            assert(0 <= n and n <= 8);
-            assert(0 <= k and k <= n);
-            static const std::array<std::array<int, 9>, 9> coeffs
-                = compute_binom_coeffs();
-            return coeffs[n][k];
-        }
-    }
+    // namespace internal {
+    //     inline int binom_coeff(const int n, const int k) {
+    //         assert(0 <= n and n <= 8);
+    //         assert(0 <= k and k <= n);
+    //         static const std::array<std::array<int, 9>, 9> coeffs
+    //             = compute_binom_coeffs();
+    //         return coeffs[n][k];
+    //     }
+    //
+    //     template<typename Real>
+    //     std::array<Real, 7> central_moments(const Real &mu,
+    //                                         const std::array<Real, 7> &zm) {
+    //         std::array<Real, 9> mun {1, mu};
+    //         for (int i = 2; i <= 8; ++i) {
+    //             mun[i] = mun[i - 1] * mu;
+    //         }
+    //         std::array<Real, 7> cm;
+    //         for (int n = 2; n <= 8; ++n) {
+    //             const int i = n - 2;
+    //             const int nsign = n % 2 == 0 ? 1 : -1;
+    //             cm[i] = nsign * (1 - n) * mun[n]; // k = 0, 1
+    //             for (int k = 2; k < n; ++k) {
+    //                 const int j = k - 2;
+    //                 const int ksign = k % 2 == 0 ? 1 : -1;
+    //                 cm[i] += nsign * ksign * binom_coeff(n, k) * zm[j] * mun[n - k];
+    //             }
+    //             cm[i] += zm[i]; // k = n
+    //         }
+    //         return cm;
+    //     }
+    // }
     
     namespace distr {
         template<typename Number>
@@ -53,7 +77,38 @@ namespace uncertainties {
         
         template<typename Number>
         Number chisquare(const int k) {
-            return Number();
+            if (k < 0) {
+                std::ostringstream ss;
+                ss << "uncertainties::distr::chisquare: k = " << k << " < 0";
+                throw std::invalid_argument(ss.str());
+            }
+            if (k == 0) {
+                return Number(0);
+            }
+            using Real = typename Number::real_type;
+            const Real K = k;
+            // const std::array<Real, 7> central_moments {
+            //     // obtained with dev/chisquare.py
+            //     2*K,
+            //     8*K,
+            //     12*K*(K + 4),
+            //     32*K*(5*K + 12),
+            //     40*K*((3*K + 52)*K + 96),
+            //     96*K*((35*K + 308)*K + 480),
+            //     112*K*(((15*K + 680)*K + 4176)*K + 5760)
+            // };
+            using std::sqrt;
+            const Real sqrtK = sqrt(K);
+            const Real sqrt2 = sqrt(Real(2));
+            const std::array<Real, 6> std_moments {
+                2*sqrt2/sqrtK,
+                3 + 12/K,
+                sqrt2*(20 + 48/K)/sqrtK,
+                15 + (260 + 480/K)/K,
+                sqrt2*((2880/K + 1848)/K + 210)/sqrtK,
+                ((40320/K + 29232)/K + 4760)/K + 105
+            };
+            return Number(K, sqrt2 * sqrtK, std_moments);
         }
     }
 }

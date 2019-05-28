@@ -20,20 +20,40 @@
 #ifndef UNCERTAINTIES_DISTR_HPP_FC01FB72
 #define UNCERTAINTIES_DISTR_HPP_FC01FB72
 
+#include <array>
+#include <cassert>
+
 #include "core.hpp"
 
 namespace uncertainties {
+    namespace internal {
+        inline int binom_coeff(const int n, const int k) {
+            assert(0 <= n and n <= 8);
+            assert(0 <= k and k <= n);
+            static const std::array<std::array<int, 9>, 9> coeffs
+                = compute_binom_coeffs();
+            return coeffs[n][k];
+        }
+    }
+    
     namespace distr {
         template<typename Number>
         Number normal(const typename Number::real_type &mu,
                       const typename Number::real_type &sigma) {
-            std::array<typename Number::real_type, 7> moments;
-            moments.fill(0);
-            moments[0] = sigma * sigma;
-            moments[2] = 3 * moments[0] * moments[0];
-            moments[4] = 5 * moments[2] * moments[0];
-            moments[6] = 7 * moments[4] * moments[0];
-            return Number(mu, moments);
+            static const std::array<typename Number::real_type, 6> std_moments {
+                0,
+                3,
+                0,
+                3 * 5,
+                0,
+                3 * 5 * 7,
+            };
+            return Number(mu, sigma, std_moments);
+        }
+        
+        template<typename Number>
+        Number chisquare(const int k) {
+            return Number();
         }
     }
 }

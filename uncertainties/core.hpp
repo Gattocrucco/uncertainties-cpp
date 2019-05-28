@@ -26,6 +26,7 @@
 
 #include <string>
 #include <atomic>
+#include <array>
 
 namespace uncertainties {
     /*!
@@ -40,6 +41,8 @@ namespace uncertainties {
     
     namespace internal {
         extern std::atomic<Id> last_id; // defined in impl.hpp
+        
+        std::array<std::array<int, 9>, 9> compute_binom_coeffs();
     }
     
     template<typename Real>

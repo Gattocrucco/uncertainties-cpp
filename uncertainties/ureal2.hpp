@@ -83,6 +83,9 @@ namespace uncertainties {
         
         UReal2(const Real &n, const std::array<Real, 7> &moments):
         mu {n} {
+            // \todo: probably there are other non-trivial relations between
+            // moments, they shall be checked, otherwise even moments of the
+            // results of operations may come out negative
             bool anyzero = false, allzero = true;
             for (int i = 0; i < 7; i += 2) {
                 if (moments[i] < 0) {
@@ -105,10 +108,58 @@ namespace uncertainties {
             diag.grad = sqrt(moments[0]);
             diag.hhess = 0;
             diag.mom = internal::Moments<Real>(new std::array<Real, 6>);
-            for (int i = 0; i < 6; ++i) {
-                (*diag.mom)[i] = diag.grad > 0 ? moments[i + 1] / diag.grad : 0;
+            if (diag.grad > 0) {
+                Real sn = moments[0];
+                for (int i = 0; i < 6; ++i) {
+                    sn *= diag.grad;
+                    (*diag.mom)[i] = moments[i + 1] / sn;
+                }
+            } else {
+                diag.mom->fill(0);
             }
             std::copy(moments.begin(), moments.begin() + 3, this->mom.begin() + 1);
+        }
+        
+        UReal2(const Real &n, const Real &s,
+               const std::array<Real, 6> &std_moments):
+        mu {n} {
+            // \todo: probably there are other non-trivial relations between
+            // moments, they shall be checked, otherwise even moments of the
+            // results of operations may come out negative
+            if (s < 0) {
+                std::ostringstream ss;
+                ss << "uncertainties::UReal2::UReal2: s = " << s << " < 0";
+                throw std::invalid_argument(ss.str());
+            }
+            bool anyzero = false, allzero = true;
+            for (int i = 1; i < 6; i += 2) {
+                if (std_moments[i] < 0) {
+                    std::ostringstream ss;
+                    ss << "uncertainties::UReal2::UReal2: ";
+                    ss << "standardized moment " << i + 3 << " = ";
+                    ss << std_moments[i] << " < 0";
+                    throw std::invalid_argument(ss.str());
+                }
+                anyzero = anyzero or std_moments[i] == 0;
+                allzero = allzero and std_moments[i] == 0;
+            }
+            if (anyzero and not allzero) {
+                std::ostringstream ss;
+                ss << "uncertainties::UReal2::UReal2: ";
+                ss << "there are both zero and nonzero even moments";
+                throw std::invalid_argument(ss.str());
+            }
+            const Id id = ++internal::last_id;
+            Diag &diag = this->hg.diag(id);
+            diag.grad = s;
+            diag.hhess = 0;
+            diag.mom = internal::Moments<Real>(new std::array<Real, 6>(std_moments));
+            Real sn = s * s;
+            this->mom[1] = sn;
+            for (int i = 2; i < 4; ++i) {
+                sn *= s;
+                this->mom[i] = std_moments[i - 2] * sn;
+            }
         }
         
         UReal2(const Real &n):

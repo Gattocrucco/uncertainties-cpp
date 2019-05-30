@@ -34,6 +34,7 @@ int main(const int argc, const char *const *const argv) {
         };
     } else {
         std_moments_vector = MomentsVector {
+            // written manually
             // generated with dev/scipymoments.py
             {{ 0.000000000000000e+00,  2.193750230045810e+00,  0.000000000000000e+00,  6.307464518351152e+00,  0.000000000000000e+00,  2.089842143605476e+01}, "anglit"},
             {{-1.374677761397093e-15,  1.500000000000648e+00, -2.855240539539878e-15,  2.500000000006676e+00, -5.710481079079755e-15,  4.375000000040987e+00}, "arcsine"},
@@ -96,8 +97,14 @@ int main(const int argc, const char *const *const argv) {
         const std::string &name = row.second;
         const std::array<double, 6> &std_moments = row.first;
         
-        if (not uncertainties::internal::check_std_moments(std_moments)) {
-            std::cerr << "std moments problems with " << name << "\n";
+        double c = uncertainties::internal::check_std_moments(std_moments);
+        if (c < 0) {
+            std::cerr << "std moments problems with " << name << "\nmoments:";
+            for (const double m : std_moments) {
+                std::cerr << " " << m;
+            }
+            std::cerr << "\n";
+            std::cerr << "condition: " << c << "\n";
             problems = true;
         }
 
@@ -109,8 +116,14 @@ int main(const int argc, const char *const *const argv) {
             moments[i] = std_moments[i - 1] * sn;
         }
         
-        if (not uncertainties::internal::check_moments(moments)) {
-            std::cerr << "moments problems with " << name << "\n";
+        c = uncertainties::internal::check_moments(moments);
+        if (c < 0) {
+            std::cerr << "moments problems with " << name << "\nmoments:";
+            for (const double m : moments) {
+                std::cerr << " " << m;
+            }
+            std::cerr << "\n";
+            std::cerr << "condition: " << c << "\n";
             problems = true;
         }
     }

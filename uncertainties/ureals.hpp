@@ -67,6 +67,7 @@ namespace uncertainties {
         // \todo split this function internals in one function diagonalizing the
         // matrix and one building the variables to allow for specialization
         // respect to InVectorB and OutVector
+        // \todo use Cholesky instead of diagonalization
         const std::size_t n = mu.size();
         if (n != 0 ? cov.size() % n != 0 or cov.size() / n != n : cov.size() != 0) {
             throw std::invalid_argument(

@@ -33,12 +33,55 @@
 namespace uncertainties {
     namespace internal {
         template<typename Real>
-        using Moments = std::shared_ptr<std::array<Real, 6>>;
+        class Moments {
+        private:
+            std::array<Real, 6> m;
+        
+        public:
+            Moments() {
+                ;
+            }
+            
+            inline explicit Moments(const std::array<Real, 6> &std_moments):
+            m {std_moments} {
+                ;
+            }
+            
+            template<int n>
+            inline Real &get() noexcept {
+                return std::get<n>(m);
+            }
+
+            template<int n>
+            inline const Real &get() const noexcept {
+                return std::get<n>(m);
+            }
+            
+            using iterator = typename std::array<Real, 6>::iterator;
+            inline iterator begin() noexcept {
+                return m.begin();
+            }
+            inline iterator end() noexcept {
+                return m.end();
+            }
+
+            using const_iterator = typename std::array<Real, 6>::const_iterator;
+            inline const_iterator begin() const noexcept {
+                return m.begin();
+            }
+            inline const_iterator end() const noexcept {
+                return m.end();
+            }
+            
+            Real &operator[](int index) {
+                return m[index];
+            }
+        };
     
         template<int n, typename Real>
         inline const Real &v(const Moments<Real> &p) noexcept {
             static_assert(n >= 3 and n <= 8, "it must be 3 <= n <= 8");
-            return std::get<n - 3>(*p);
+            return p.template get<n - 3>();
         }
     
         template<typename Real>
@@ -373,8 +416,7 @@ namespace uncertainties {
                     const Diag &diag = it.second;
                     node.grad = diag.grad;
                     node.hhess = diag.hhess;
-                    node.mom = Moments<OtherReal>(new std::array<OtherReal, 6>);
-                    std::copy(diag.mom->begin(), diag.mom->end(), node.mom->begin());
+                    std::copy(diag.mom.begin(), diag.mom.end(), node.mom.begin());
                 }
                 for (const auto &it : trimap) {
                     hg.trimap[it.first] = it.second;

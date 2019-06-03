@@ -216,7 +216,6 @@ namespace uncertainties {
                 if (ida == idb) {
                     const Diag &da = ita->second;
                     const Diag &db = itb->second;
-                    assert(da.mom.get() == db.mom.get());
                     m += da.grad * db.grad; // A1
                     m += da.hhess * db.grad * v<3>(da.mom); // A2
                     m += da.grad * db.hhess * v<3>(da.mom); // A3

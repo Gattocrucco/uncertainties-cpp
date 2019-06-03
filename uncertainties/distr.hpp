@@ -87,16 +87,6 @@ namespace uncertainties {
             }
             using Real = typename Number::real_type;
             const Real K = k;
-            // const std::array<Real, 7> central_moments {
-            //     // obtained with dev/chisquare.py
-            //     2*K,
-            //     8*K,
-            //     12*K*(K + 4),
-            //     32*K*(5*K + 12),
-            //     40*K*((3*K + 52)*K + 96),
-            //     96*K*((35*K + 308)*K + 480),
-            //     112*K*(((15*K + 680)*K + 4176)*K + 5760)
-            // };
             using std::sqrt;
             const Real sqrtK = sqrt(K);
             const Real sqrt2 = sqrt(Real(2));
@@ -106,7 +96,7 @@ namespace uncertainties {
                 sqrt2*(20 + 48/K)/sqrtK,
                 15 + (260 + 480/K)/K,
                 sqrt2*((2880/K + 1848)/K + 210)/sqrtK,
-                ((40320/K + 29232)/K + 4760)/K + 105
+                105 + ((40320/K + 29232)/K + 4760)/K
             };
             return Number(K, sqrt2 * sqrtK, std_moments);
         }

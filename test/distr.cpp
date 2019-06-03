@@ -69,10 +69,41 @@ using utype = unc::udouble2e;
 int main() {
     check(normal<utype>(1, 1), {1.0, 1.0, 0.0});
     check(normal<utype>(1, 2), {1.0, 4.0, 0.0});
+    
+    for (int i = 0; i < 10; ++i) {
+        for (int j = 0; j < 10; ++j) {
+            const utype::real_type v = i * i + j * j;
+            check(normal<utype>(0, i) + normal<utype>(0, j), {0.0, v, 0.0});
+        }
+    }
 
     check(chisquare<utype>(0), {0.0, 0.0, 0.0});
     check(chisquare<utype>(1), {1.0, 2.0, 8.0});
     check(chisquare<utype>(2), {2.0, 4.0, 16.0});
+    
+    for (int i = 0; i < 10; ++i) {
+        for (int j = 0; j < 10; ++j) {
+            const utype::real_type k = i + j;
+            check(chisquare<utype>(i) + chisquare<utype>(j), {k, 2 * k, 8 * k});
+        }
+    }
+    
+    for (int i = 0; i < 10; ++i) {
+        utype x;
+        for (int k = 0; k < i; ++k) {
+            utype n = normal<utype>(0, 1);
+            x = x + n * n;
+        }
+        for (int j = 0; j < 10; ++j) {
+            utype y;
+            for (int k = 0; k < j; ++k) {
+                utype n = normal<utype>(0, 1);
+                y = y + n * n;
+            }
+            const utype::real_type k = i + j;
+            check(x + y, {k, 2 * k, 8 * k});
+        }
+    }
     
     check(normal<utype>(1, 1) + normal<utype>(4, 2), {5.0, 5.0, 0.0});
     utype x = normal<utype>(1, 1);

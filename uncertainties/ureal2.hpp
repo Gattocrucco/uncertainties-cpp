@@ -94,15 +94,14 @@ namespace uncertainties {
             using std::sqrt;
             diag.grad = sqrt(moments[0]);
             diag.hhess = 0;
-            diag.mom = internal::Moments<Real>(new std::array<Real, 6>);
             if (diag.grad > 0) {
                 Real sn = moments[0];
                 for (int i = 0; i < 6; ++i) {
                     sn *= diag.grad;
-                    (*diag.mom)[i] = moments[i + 1] / sn;
+                    diag.mom[i] = moments[i + 1] / sn;
                 }
             } else {
-                diag.mom->fill(0);
+                std::fill(diag.mom.begin(), diag.mom.end(), 0);
             }
             std::copy(moments.begin(), moments.begin() + 3, this->mom.begin() + 1);
         }
@@ -123,7 +122,7 @@ namespace uncertainties {
             Diag &diag = this->hg.diag(id);
             diag.grad = s;
             diag.hhess = 0;
-            diag.mom = internal::Moments<Real>(new std::array<Real, 6>(std_moments));
+            diag.mom = internal::Moments<Real>(std_moments);
             Real sn = s * s;
             this->mom[1] = sn;
             for (int i = 2; i < 4; ++i) {

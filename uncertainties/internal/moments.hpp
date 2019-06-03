@@ -47,17 +47,17 @@ namespace uncertainties {
             Real m(0);
             
             // formula:
-            // C[y^2] =
-            // G_i^2 V_{ii} +
-            // 2 G_i H_{ii} V_{iii} +
-            // H_{ii} H_{ii} V_{iiii} +
-            // 2 \sum_{i < j} (H_{ii} H_{jj} + 2 H_{ij}^2) V_{ii} V_{jj}
+            // A1)  G_i G_i V_ii + 
+            // A2)  2 G_i H_ii V_iii + 
+            // A3)  H_ii H_ii V_iiii + 
+            // B1)  2 H_ij H_ij V_iijj + 
+            // B2)  H_ii H_jj V_iijj
             
             for (ConstDiagIt it = hg.cdbegin(); it != hg.cdend(); ++it) {
                 const Diag &d = (*it).second;
-                m += d.grad * d.grad;
-                m += 2 * d.grad * d.hhess * v<3>(d.mom);
-                m += d.hhess * d.hhess * v<4>(d.mom);
+                m += d.grad * d.grad; // A1
+                m += 2 * d.grad * d.hhess * v<3>(d.mom); // A2
+                m += d.hhess * d.hhess * v<4>(d.mom); // A3
             }
             
             const ConstTriIt tend = hg.ctend();
@@ -65,7 +65,7 @@ namespace uncertainties {
                 const Diag &d1 = it.diag1();
                 const Diag &d2 = it.diag2();
                 const Real &hhess = *it;
-                m += 2 * (d1.hhess * d2.hhess + 2 * hhess * hhess);
+                m += 2 * (d1.hhess * d2.hhess + 2 * hhess * hhess); // B2, B1
             }
             
             assert(m >= 0);

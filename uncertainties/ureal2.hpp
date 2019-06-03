@@ -33,6 +33,7 @@
 #include "core.hpp"
 #include "internal/hessgrad.hpp"
 #include "internal/moments.hpp"
+#include "internal/checkmoments.hpp"
 
 namespace uncertainties {
     namespace internal {
@@ -81,26 +82,12 @@ namespace uncertainties {
         using real_type = Real;
         static constexpr Prop prop_mode = prop;
         
-        UReal2(const Real &n, const std::array<Real, 7> &moments):
+        UReal2(const Real &n,
+               const std::array<Real, 7> &moments,
+               const Real &check_moments_threshold=0):
         mu {n} {
-            // \todo: probably there are other non-trivial relations between
-            // moments, they shall be checked, otherwise even moments of the
-            // results of operations may come out negative
-            bool anyzero = false, allzero = true;
-            for (int i = 0; i < 7; i += 2) {
-                if (moments[i] < 0) {
-                    std::ostringstream s;
-                    s << "uncertainties::UReal2::UReal2: moment " << i + 2 << " < 0";
-                    throw std::invalid_argument(s.str());
-                }
-                anyzero = anyzero or moments[i] == 0;
-                allzero = allzero and moments[i] == 0;
-            }
-            if (anyzero and not allzero) {
-                std::ostringstream s;
-                s << "uncertainties::UReal2::UReal2: ";
-                s << "there are both zero and nonzero even moments";
-                throw std::invalid_argument(s.str());
+            if (not (check_moments_threshold < 0)) {
+                internal::check_moments_throw(moments, check_moments_threshold);
             }
             const Id id = ++internal::last_id;
             Diag &diag = this->hg.diag(id);
@@ -121,33 +108,16 @@ namespace uncertainties {
         }
         
         UReal2(const Real &n, const Real &s,
-               const std::array<Real, 6> &std_moments):
+               const std::array<Real, 6> &std_moments,
+               const Real &check_moments_threshold=0):
         mu {n} {
-            // \todo: probably there are other non-trivial relations between
-            // moments, they shall be checked, otherwise even moments of the
-            // results of operations may come out negative
             if (s < 0) {
                 std::ostringstream ss;
                 ss << "uncertainties::UReal2::UReal2: s = " << s << " < 0";
                 throw std::invalid_argument(ss.str());
             }
-            bool anyzero = false, allzero = true;
-            for (int i = 1; i < 6; i += 2) {
-                if (std_moments[i] < 0) {
-                    std::ostringstream ss;
-                    ss << "uncertainties::UReal2::UReal2: ";
-                    ss << "standardized moment " << i + 3 << " = ";
-                    ss << std_moments[i] << " < 0";
-                    throw std::invalid_argument(ss.str());
-                }
-                anyzero = anyzero or std_moments[i] == 0;
-                allzero = allzero and std_moments[i] == 0;
-            }
-            if (anyzero and not allzero) {
-                std::ostringstream ss;
-                ss << "uncertainties::UReal2::UReal2: ";
-                ss << "there are both zero and nonzero even moments";
-                throw std::invalid_argument(ss.str());
+            if (not (check_moments_threshold < 0)) {
+                internal::check_moments_throw(std_moments, check_moments_threshold);
             }
             const Id id = ++internal::last_id;
             Diag &diag = this->hg.diag(id);

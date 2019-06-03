@@ -22,6 +22,7 @@
 #define UNCERTAINTIES_CHECKMOMENTS_HPP_502A3413
 
 #include <array>
+
 #include <Eigen/Dense>
 
 namespace uncertainties {
@@ -88,34 +89,59 @@ namespace uncertainties {
         //
         //     return 0;
         // }
+        
+        template<typename Real>
+        using HKMatrix = Eigen::Matrix<Real, 5, 5>;
+       
+        template<typename Real>
+        Real hamburger(const HKMatrix<Real> &M) {
+            Eigen::SelfAdjointEigenSolver<HKMatrix<Real>> solver(M, Eigen::EigenvaluesOnly);
+            if (solver.info() != Eigen::Success) {
+                throw std::runtime_error("uncertainties::internal::hamburger: diagonalization failed");
+            }
+            const Eigen::Matrix<Real, 5, 1> v = solver.eigenvalues();
+            Real max_nonneg = -1;
+            Real max_neg = 1;
+            for (int i = 0; i < v.size(); ++i) {
+                const Real &a = v(i);
+                if (a < 0 and a < max_neg) {
+                    max_neg = a;
+                } else if (a >= 0 and a > max_nonneg) {
+                    max_nonneg = a;
+                }
+            }
+            if (max_nonneg < 0) {
+                return 1;
+            } else if (max_neg > 0) {
+                return 0;
+            } else {
+                return max_neg / max_nonneg;
+            }
+        }
 
-       template<typename Real>
-       bool check_std_moments(const std::array<Real, 6> &std_moments) {
-           using Matrix = Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>;
-           Matrix M(5, 5);
-           for (int j = 0; j < 5; ++j) {
-               for (int i = j; i < 5; ++i) {
-                   const int idx = i + j - 3;
-                   M(i, j) = idx >= 0 ? std_moments[idx] : std::abs(idx % 2);
-               }
-           }
-           Eigen::LDLT<Matrix> ldlt(M);
-           return ldlt.isPositive();
-       }
+        template<typename Real>
+        Real check_std_moments(const std::array<Real, 6> &std_moments) {
+            HKMatrix<Real> M;
+            for (int j = 0; j < 5; ++j) {
+                for (int i = j; i < 5; ++i) {
+                    const int idx = i + j - 3;
+                    M(i, j) = idx >= 0 ? std_moments[idx] : std::abs(idx % 2);
+                }
+            }
+            return hamburger(M);
+        }
 
-       template<typename Real>
-       bool check_moments(const std::array<Real, 7> &moments) {
-           using Matrix = Eigen::Matrix<Real, Eigen::Dynamic, Eigen::Dynamic>;
-           Matrix M(5, 5);
-           for (int j = 0; j < 5; ++j) {
-               for (int i = j; i < 5; ++i) {
-                   const int idx = i + j - 2;
-                   M(i, j) = idx >= 0 ? moments[idx] : std::abs((idx + 1) % 2);
-               }
-           }
-           Eigen::LDLT<Matrix> ldlt(M);
-           return ldlt.isPositive();
-       }
+        template<typename Real>
+        Real check_moments(const std::array<Real, 7> &moments) {
+            HKMatrix<Real> M;
+            for (int j = 0; j < 5; ++j) {
+                for (int i = j; i < 5; ++i) {
+                    const int idx = i + j - 2;
+                    M(i, j) = idx >= 0 ? moments[idx] : std::abs((idx + 1) % 2);
+                }
+            }
+            return hamburger(M);
+        }
     }
 }
 

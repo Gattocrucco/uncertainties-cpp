@@ -97,8 +97,8 @@ int main(const int argc, const char *const *const argv) {
         const std::string &name = row.second;
         const std::array<double, 6> &std_moments = row.first;
         
-        bool c = uncertainties::internal::check_std_moments(std_moments);
-        if (not c) {
+        double c = uncertainties::internal::check_std_moments(std_moments);
+        if (c != 0) {
             std::cerr << "std moments problems with " << name << "\nmoments:";
             for (const double m : std_moments) {
                 std::cerr << " " << m;
@@ -117,7 +117,7 @@ int main(const int argc, const char *const *const argv) {
         }
         
         c = uncertainties::internal::check_moments(moments);
-        if (not c) {
+        if (c != 0) {
             std::cerr << "moments problems with " << name << "\nmoments:";
             for (const double m : moments) {
                 std::cerr << " " << m;

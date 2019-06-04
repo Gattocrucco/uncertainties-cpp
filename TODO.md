@@ -13,5 +13,4 @@ UReal::isindep should return true if `id < 0` but `sigma.size() <= 1`.
 
 Check if `UReal` works as user type to Eigen.
 
-* understand how to center generic correlations
 * understand the multeplicity of multiindex terms: have I already included the multeplicity needed by sorted iteration in the generation?

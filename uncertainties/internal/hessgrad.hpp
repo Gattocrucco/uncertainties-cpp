@@ -183,7 +183,7 @@ namespace uncertainties {
                 const typename std::map<IdPair, Real>::const_iterator triend;
                 const bool skipmissing = true;
                 
-                void update_diag() {
+                void update_diag() noexcept {
                     if (tri != triend) {
                         for (; diagmin != diagend and diagmin->first < tri->first.first; ++diagmin) ;
                         assert(diagmin != diagend && diagmin->first == tri->first.first);
@@ -194,7 +194,7 @@ namespace uncertainties {
                         diagmax = diagend;
                     }
                 }
-                    
+                
             public:            
                 ConstTriIt(
                     const typename std::map<Id, Diag>::const_iterator &diag_begin,
@@ -207,6 +207,8 @@ namespace uncertainties {
                 diagmin {diag_begin}, diagmax {diag_begin}, tri {tri_begin} {
                     if (skipmissing) {
                         this->update_diag();
+                    } else if (diagmax != diagend && ++diagmax == diagend) {
+                        diagmin = diagend;
                     }
                 }
                 
@@ -231,6 +233,8 @@ namespace uncertainties {
                             if (diagmax != diagend && ++diagmax != diagend) {
                                 const IdPair id {diagmin->first, diagmax->first};
                                 for (; tri != triend && tri->first < id; ++tri) ;
+                            } else {
+                                diagmin = diagend;
                             }
                         }
                     }

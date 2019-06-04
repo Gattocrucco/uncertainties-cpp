@@ -6,6 +6,9 @@
 #include <uncertainties/distr.hpp>
 #include <uncertainties/io.hpp>
 
+#include <ios>
+#include <iomanip>
+
 namespace unc = uncertainties;
 
 template<typename Real>
@@ -48,7 +51,8 @@ void checkmn(const unc::UReal2<Real, prop> &x, const Real &mn, const int n) {
         const Real c = cov(x, x);
         if (not close(c, m)) {
             std::ostringstream s;
-            s << "var(x) = " << m << " but cov(x,x) = " << m;
+            s << std::setprecision(15) << std::scientific;
+            s << "var(x) = " << m << " but cov(x,x) = " << c;
             s << ", with x = " << x;
             throw std::runtime_error(s.str());
         }

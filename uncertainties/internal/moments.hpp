@@ -222,7 +222,7 @@ namespace uncertainties {
                     m += da.hhess * db.hhess * v<4>(da.mom); // A4
                 }
                 if (ida <= idb) ++ita;
-                if (ida <= idb) ++itb;
+                if (idb <= ida) ++itb;
             }
             
             // CYCLE B
@@ -237,7 +237,7 @@ namespace uncertainties {
                     m += 2 * 2 * (*tita) * (*titb); // B1
                 }
                 if (ida <= idb) ++tita;
-                if (ida <= idb) ++titb;
+                if (idb <= ida) ++titb;
             }
             
             // CYCLE C

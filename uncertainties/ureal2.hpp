@@ -40,6 +40,30 @@ namespace uncertainties {
         inline int propsign(const Prop prop) noexcept {
             return prop == Prop::est ? -1 : 1;
         }
+        
+        template<typename Real>
+        void update_mom(std::array<Real, 4> &mom,
+                        const int i,
+                        const HessGrad<Real> &hg) noexcept {
+            assert(i >= 0 and i <= 3);
+            const Real &m1 = mom[0];
+            const Real &m2 = mom[1];
+            const Real &m3 = mom[2];
+            const Real m = internal::compute_mom(hg, i + 1);
+            switch (i) {
+            case 0:
+                mom[i] = m;
+                break;
+            case 1:
+                mom[i] = m - m1 * m1;
+                break;
+            case 2:
+                mom[i] = m - m1 * (3*m2 + m1*m1);
+                break;
+            case 3:
+                mom[i] = m - m1 * (4*m3 + m1 * (6*m2 + m1*m1));
+            }
+        }
     }
     
     template<typename Real, Prop prop>
@@ -195,32 +219,30 @@ namespace uncertainties {
         }
         
         const Real &m(const int n) {
-            const int i = n - 1;
-            if (i < 0 or i > 3) {
-                std::ostringstream s;
-                s << "uncertainties::UReal2::m: ";
-                s << "moment order " << n << " out of range";
-                throw std::invalid_argument(s.str());
+            assert(n >= 1 and n <= 4);
+            for (int i = 0; i < n; ++i) {
+                if (this->mom_to_compute[i]) {
+                    internal::update_mom(this->mom, i, this->hg);
+                    this->mom_to_compute[i] = false;
+                }
             }
-            if (this->mom_to_compute[i]) {
-                this->mom[i] = internal::compute_mom(this->hg, n);
-                this->mom_to_compute[i] = false;
-            }
-            return this->mom[i];
+            return this->mom[n - 1];
         }
         
         Real m(const int n) const {
-            const int i = n - 1;
-            if (i < 0 or i > 3) {
-                std::ostringstream s;
-                s << "uncertainties::UReal2::m const: ";
-                s << "moment order " << n << " out of range";
-                throw std::invalid_argument(s.str());
-            }
-            if (this->mom_to_compute[i]) {
-                return internal::compute_mom(this->hg, n);
+            assert(n >= 1 and n <= 4);
+            if (this->mom_to_compute[n - 1]) {
+                std::array<Real, 4> mom;
+                for (int i = 0; i < n; ++i) {
+                    if (this->mom_to_compute[i]) {
+                        internal::update_mom(mom, i, this->hg);
+                    } else {
+                        mom[i] = this->mom[i];
+                    }
+                }
+                return mom[n - 1];
             } else {
-                return this->mom[i];
+                return this->mom[n - 1];
             }
         }
 

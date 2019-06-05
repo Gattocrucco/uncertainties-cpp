@@ -4,11 +4,11 @@
 #include <cmath>
 #include <ios>
 #include <iomanip>
+#include <vector>
 
 #include <uncertainties/ureal2.hpp>
 #include <uncertainties/distr.hpp>
 #include <uncertainties/io.hpp>
-#include <uncertainties/math.hpp>
 
 namespace unc = uncertainties;
 
@@ -68,8 +68,24 @@ void check(const unc::UReal2<Real, prop> &x, const std::initializer_list<Real> &
     }
 }
 
+template<typename Real, unc::Prop prop>
+void check(const unc::UReal2<Real, prop> &x, const unc::UReal2<Real, prop> &y) {
+    for (int i = 1; i <= 3; ++i) {
+        const Real xm = i == 1 ? x.n() : x.m(i);
+        const Real ym = i == 1 ? y.n() : y.m(i);
+        if (not close(xm, ym)) {
+            std::ostringstream ss;
+            ss << "x.m(" << i << ") = " << xm << " != y.m(";
+            ss << i << ") = " << ym;
+            ss << ", with x = " << x << ", y = " << y;
+            throw std::runtime_error(ss.str());
+        }
+    }
+}
+
 using namespace unc::distr;
 using utype = unc::udouble2m;
+using type = utype::real_type;
 
 int main() {
     // normal
@@ -79,17 +95,17 @@ int main() {
     // sum of normal is normal
     for (int i = 0; i < 10; ++i) {
         for (int j = 0; j < 10; ++j) {
-            const utype::real_type v = i * i + j * j;
+            const type v = i * i + j * j;
             check(normal<utype>(0, i) + normal<utype>(0, j), {0.0, v, 0.0});
         }
     }
-    check(normal<utype>(1, 1) + normal<utype>(4, 2), {5.0, 5.0, 0.0});
     
     utype x = normal<utype>(1, 1);
     check(x - x, {0.0, 0.0, 0.0});
     check(x + x, {2.0, 4.0, 0.0});
     check(2 * x, {2.0, 4.0, 0.0});
     check(x + 2 * x, {3.0, 9.0, 0.0});
+    check(-x, {-1.0, 1.0, 0.0});
     checkcov(x, x, 1.0);
     checkcov(x, utype(1.0), 0.0);
     checkcov(x + x, x - x, 0.0);
@@ -102,12 +118,14 @@ int main() {
     // sum of chisquare is chisquare
     for (int i = 0; i < 10; ++i) {
         for (int j = 0; j < 10; ++j) {
-            const utype::real_type k = i + j;
+            const type k = i + j;
             check(chisquare<utype>(i) + chisquare<utype>(j), {k, 2 * k, 8 * k});
         }
     }
     
     // sum of normal squared is chisquare
+    x = normal<utype>(0, 1);
+    check(x * x, chisquare<utype>(1));
     for (int i = 0; i < 10; ++i) {
         utype x;
         for (int k = 0; k < i; ++k) {
@@ -123,11 +141,46 @@ int main() {
             const utype::real_type k = i + j;
             check(x + y, {k, 2 * k, 8 * k});
             check(-(x + y), {-k, 2 * k, -8 * k});
+            check(2 * (x + y), {2 * k, 4 * 2 * k, 8 * 8 * k});
+            checkcov(x, y, 0.0);
         }
     }
     
     // uniform
     using std::sqrt;
-    check(uniform<utype>(0, 1), {0.5, utype::real_type(1) / 12, 0.0});
-    check(uniform<utype>(-1, 1), {0.0, utype::real_type(1) / 3, 0.0});
+    check(uniform<utype>(0, 1), {0.5, type(1) / 12, 0.0});
+    check(uniform<utype>(-1, 1), {0.0, type(1) / 3, 0.0});
+    
+    // covariance is bilinear
+    const std::vector<utype> dists = {
+        normal<utype>(0, 1),
+        normal<utype>(-2.3, 0.3),
+        chisquare<utype>(2),
+        chisquare<utype>(10),
+        uniform<utype>(0, 1),
+        uniform<utype>(-1.1, 3.5)
+    };
+    for (int i = 0; i < dists.size(); ++i) {
+        for (int j = i; j < dists.size(); ++j) {
+            const utype &x = dists[i];
+            const utype &y = dists[j];
+            for (double alpha = -0.3; alpha < 10.0; alpha += 1.3) {
+                for (double beta = -3.4; beta < 5.0; beta += 1.2) {
+                    const type expcov = var(x) + (alpha + beta) * cov(x, y) + alpha * beta * var(y);
+                    checkcov(x + alpha * y, y * beta + x, expcov);
+                }
+            }
+        }
+    }
+    
+    // create two variables with nontrivial intersection
+    x = normal<utype>(-0.1234, 1.345);
+    utype y = normal<utype>(0.9, 0.3849);
+    utype z = normal<utype>(0.0001, 0.77);
+    utype xpy = x + y;
+    utype ypz = y + z;
+    checkcov(xpy, ypz, var(y));
+    utype tot = xpy + ypz;
+    utype tot2 = x + 2 * y + z;
+    check(tot, tot2);
 }

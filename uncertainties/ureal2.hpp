@@ -273,6 +273,10 @@ namespace uncertainties {
             return x;
         }
         
+        inline friend Real var(const UReal2<Real, prop> &x) noexcept {
+            return x.m(2);
+        }
+        
         inline friend Real cov(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) noexcept {
             return internal::compute_c2(x.hg, y.hg) - x.m(1) * y.m(1);
         }

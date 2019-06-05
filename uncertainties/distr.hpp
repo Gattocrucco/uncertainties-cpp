@@ -104,13 +104,14 @@ namespace uncertainties {
         template<typename Number>
         Number uniform(const typename Number::real_type &left,
                        const typename Number::real_type &right) {
-            static const std::array<typename Number::real_type, 6> std_moments {
+            using Real = typename Number::real_type;
+            static const std::array<Real, 6> std_moments {
                 0,
-                Real(1) / (5 * 2 * 2 * 2 * 2),
+                3 * 3 / Real(5),
                 0,
-                Real(1) / (7 * 2 * 2 * 2 * 2 * 2 * 2),
+                3 * 3 * 3 / Real(7),
                 0,
-                Real(1) / (9 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2),
+                3 * 3, // * 3 * 3 / Real(9),
             };
             const Real mu = (right + left) / 2;
             using std::sqrt;

@@ -1,13 +1,14 @@
 #include <stdexcept>
 #include <sstream>
 #include <initializer_list>
+#include <cmath>
+#include <ios>
+#include <iomanip>
 
 #include <uncertainties/ureal2.hpp>
 #include <uncertainties/distr.hpp>
 #include <uncertainties/io.hpp>
-
-#include <ios>
-#include <iomanip>
+#include <uncertainties/math.hpp>
 
 namespace unc = uncertainties;
 
@@ -68,9 +69,10 @@ void check(const unc::UReal2<Real, prop> &x, const std::initializer_list<Real> &
 }
 
 using namespace unc::distr;
-using utype = unc::udouble2e;
+using utype = unc::udouble2m;
 
 int main() {
+    // normal
     check(normal<utype>(1, 1), {1.0, 1.0, 0.0});
     check(normal<utype>(1, 2), {1.0, 4.0, 0.0});
     
@@ -81,7 +83,18 @@ int main() {
             check(normal<utype>(0, i) + normal<utype>(0, j), {0.0, v, 0.0});
         }
     }
+    check(normal<utype>(1, 1) + normal<utype>(4, 2), {5.0, 5.0, 0.0});
+    
+    utype x = normal<utype>(1, 1);
+    check(x - x, {0.0, 0.0, 0.0});
+    check(x + x, {2.0, 4.0, 0.0});
+    check(2 * x, {2.0, 4.0, 0.0});
+    check(x + 2 * x, {3.0, 9.0, 0.0});
+    checkcov(x, x, 1.0);
+    checkcov(x, utype(1.0), 0.0);
+    checkcov(x + x, x - x, 0.0);
 
+    // chisquare
     check(chisquare<utype>(0), {0.0, 0.0, 0.0});
     check(chisquare<utype>(1), {1.0, 2.0, 8.0});
     check(chisquare<utype>(2), {2.0, 4.0, 16.0});
@@ -109,16 +122,12 @@ int main() {
             }
             const utype::real_type k = i + j;
             check(x + y, {k, 2 * k, 8 * k});
+            check(-(x + y), {-k, 2 * k, -8 * k});
         }
     }
     
-    check(normal<utype>(1, 1) + normal<utype>(4, 2), {5.0, 5.0, 0.0});
-    utype x = normal<utype>(1, 1);
-    check(x - x, {0.0, 0.0, 0.0});
-    check(x + x, {2.0, 4.0, 0.0});
-    check(2 * x, {2.0, 4.0, 0.0});
-    check(x + 2 * x, {3.0, 9.0, 0.0});
-    checkcov(x, x, 1.0);
-    checkcov(x, utype(1.0), 0.0);
-    checkcov(x + x, x - x, 0.0);
+    // uniform
+    using std::sqrt;
+    check(uniform<utype>(0, 1), {0.5, utype::real_type(1) / 12, 0.0});
+    check(uniform<utype>(-1, 1), {0.0, utype::real_type(1) / 3, 0.0});
 }

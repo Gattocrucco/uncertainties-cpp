@@ -108,7 +108,7 @@ namespace uncertainties {
                 m += grad * grad * grad * v<3>(mom); // A1
                 m += 3 * grad * grad * hhess * v<4>(mom); // A2
                 m += 3 * grad * hhess * hhess * v<5>(mom); // A3
-                m += hhess * hhess * hhess * hhess * v<6>(mom); // A4
+                m += hhess * hhess * hhess * v<6>(mom); // A4
                 
                 // CYCLE B
                 ConstDiagIt it2 = it;

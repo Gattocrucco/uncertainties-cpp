@@ -100,6 +100,7 @@ int main() {
         }
     }
     
+    // linear tests on normal
     utype x = normal<utype>(1, 1);
     check(x - x, {0.0, 0.0, 0.0});
     check(x + x, {2.0, 4.0, 0.0});
@@ -128,9 +129,13 @@ int main() {
     check(x * x, chisquare<utype>(1));
     for (int i = 0; i < 10; ++i) {
         utype x;
-        for (int k = 0; k < i; ++k) {
+        for (int k = 0; k < i - 1; ++k) {
             utype n = normal<utype>(0, 1);
             x = x + n * n;
+        }
+        utype shared_n = normal<utype>(0, 1);
+        if (i > 0) {
+            x = x + 0.5 * shared_n * shared_n;
         }
         for (int j = 0; j < 10; ++j) {
             utype y;
@@ -138,11 +143,14 @@ int main() {
                 utype n = normal<utype>(0, 1);
                 y = y + n * n;
             }
+            if (i > 0) {
+                y = y + 0.5 * shared_n * shared_n;
+            }
             const utype::real_type k = i + j;
             check(x + y, {k, 2 * k, 8 * k});
             check(-(x + y), {-k, 2 * k, -8 * k});
             check(2 * (x + y), {2 * k, 4 * 2 * k, 8 * 8 * k});
-            checkcov(x, y, 0.0);
+            checkcov(x, y, i > 0 ? 0.5 : 0.0);
         }
     }
     

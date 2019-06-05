@@ -74,6 +74,7 @@ int main() {
     check(normal<utype>(1, 1), {1.0, 1.0, 0.0});
     check(normal<utype>(1, 2), {1.0, 4.0, 0.0});
     
+    // sum of normal is normal
     for (int i = 0; i < 10; ++i) {
         for (int j = 0; j < 10; ++j) {
             const utype::real_type v = i * i + j * j;
@@ -85,6 +86,7 @@ int main() {
     check(chisquare<utype>(1), {1.0, 2.0, 8.0});
     check(chisquare<utype>(2), {2.0, 4.0, 16.0});
     
+    // sum of chisquare is chisquare
     for (int i = 0; i < 10; ++i) {
         for (int j = 0; j < 10; ++j) {
             const utype::real_type k = i + j;
@@ -92,6 +94,7 @@ int main() {
         }
     }
     
+    // sum of normal squared is chisquare
     for (int i = 0; i < 10; ++i) {
         utype x;
         for (int k = 0; k < i; ++k) {

@@ -89,7 +89,7 @@ namespace uncertainties {
             const Real K = k;
             using std::sqrt;
             const Real sqrtK = sqrt(K);
-            const Real sqrt2 = sqrt(Real(2));
+            static const Real sqrt2 = sqrt(Real(2));
             const std::array<Real, 6> std_moments {
                 2*sqrt2/sqrtK,
                 3 + 12/K,
@@ -99,6 +99,23 @@ namespace uncertainties {
                 105 + ((40320/K + 29232)/K + 4760)/K
             };
             return Number(K, sqrt2 * sqrtK, std_moments);
+        }
+
+        template<typename Number>
+        Number uniform(const typename Number::real_type &left,
+                       const typename Number::real_type &right) {
+            static const std::array<typename Number::real_type, 6> std_moments {
+                0,
+                Real(1) / (5 * 2 * 2 * 2 * 2),
+                0,
+                Real(1) / (7 * 2 * 2 * 2 * 2 * 2 * 2),
+                0,
+                Real(1) / (9 * 2 * 2 * 2 * 2 * 2 * 2 * 2 * 2),
+            };
+            const Real mu = (right + left) / 2;
+            using std::sqrt;
+            const Real sigma = sqrt(Real(1) / (3 * 2 * 2)) * (right - left);
+            return Number(mu, sigma, std_moments);
         }
     }
 }

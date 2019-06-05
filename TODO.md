@@ -12,5 +12,3 @@ Overload `std::numeric_limits`.
 UReal::isindep should return true if `id < 0` but `sigma.size() <= 1`.
 
 Check if `UReal` works as user type to Eigen.
-
-* understand the multeplicity of multiindex terms: have I already included the multeplicity needed by sorted iteration in the generation?

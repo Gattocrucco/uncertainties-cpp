@@ -5,6 +5,8 @@ import numpy as np
 from fractions import Fraction
 from collections import Counter, OrderedDict
 
+SIMPL_V_REPR = False
+
 indices = ('i', 'j', 'k', 'l', 'm', 'n', 'o', 'p')
 
 def isnum(x):
@@ -46,7 +48,12 @@ class V:
     def __repr__(self):
         if self._indices:
             rankstr = ''
-            indstr = '_' + ''.join(map(lambda i: indices[i], self._indices))
+            if SIMPL_V_REPR:
+                c = Counter(self._indices)
+                idxs = filter(lambda i: c[i] > 2, self._indices)
+            else:
+                idxs = self._indices
+            indstr = '_' + ''.join(map(lambda i: indices[i], idxs))
         else:
             indstr = ''
             rankstr = f'{self._rank}'
@@ -288,6 +295,39 @@ class Mult(Reductor):
             d._indices = tuple(p[i] for i in d._indices)
         return self
 
+    def classify(self):
+        for obj in self._list:
+            assert(not isinstance(obj, Reductor))
+    
+        indices = []
+        for obj in self._list:
+            if isinstance(obj, D):
+                assert(obj._indices)
+                indices.append(obj._indices)
+    
+        nindices = len(set(sum(indices, ())))
+    
+        if nindices == 1:
+            self._cycle = 'A'
+            return self
+    
+        if nindices == 2:
+            for idxs in indices:
+                if len(set(idxs)) == 2:
+                    self._cycle = 'B'
+                    return self
+            self._cycle = 'AA'
+            return self
+    
+        if nindices == 3:
+            c = Counter(map(lambda i: len(set(i)), indices))
+            if not 2 in c:
+                self._cycle = 'AAA'
+                return self
+            
+            
+        
+
 def stripfactor(x):
     if isinstance(x, Mult) and x._list and isnum(x._list[0]):
         return Mult(*x._list[1:])
@@ -327,7 +367,6 @@ class Sum(Reductor):
             return 0
     
     def harvest(self):
-        # NON FUNZIONA!
         terms = []
         counts = []
         while self._list:

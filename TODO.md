@@ -10,18 +10,18 @@ Implement `numeric_limits`. In namespace `uncertainties` or `std`? Look for what
 
 Check if `UReal` works as user type to Eigen.
 
-fourth order momentum
+Fourth order momentum (written by hand).
 
-third and fourth order correlation functions
+Third and fourth order correlation functions (automatical generation).
 
-check higher order correlation functions using relations with lower order
-correlations if there are identical arguments
+Check higher order correlation functions using relations with lower order
+correlations if there are identical arguments.
 
-optimize `UReal2::binary` and `UReal::binary`
+Optimize `UReal2::binary` and `UReal::binary`.
 
-implement `UReal2::binary_assign`
+Implement `UReal2::binary_assign`.
 
-think a sensible interface to allow inplace unary operations
+Think a sensible interface to allow inplace unary operations
 (implement `UReal(2)::unary_inplace`). (Second optional argument to all the
 unary functions in `math.hpp`?)
 
@@ -30,3 +30,9 @@ positive (exponential with crude estimation of the mode?). Generalize Edgeworth
 series to higher dimensionality.
 
 Python interface. (Standard C extension compiled with specific types?)
+
+Fit with propagation like `lsqfit`. The gradient wrt data can be estimated
+quickly using linear model approximation, is there something similar for the
+second derivatives? Is the second order correction on least squares a good
+bias correction in typical cases? Is it better to do ML with Edgeworth pdf (and
+would it allow to preserve correlation with data)?

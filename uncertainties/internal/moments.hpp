@@ -173,6 +173,145 @@ namespace uncertainties {
             }
             return m;
         }
+        
+        template<typename Real>
+        Real compute_m4(const HessGrad<Real> &hg) {
+            using ConstDiagIt = typename HessGrad<Real>::ConstDiagIt;
+            using ConstTriIt = typename HessGrad<Real>::ConstTriIt;
+            using Diag = typename HessGrad<Real>::Diag;
+            Real m(0);
+            
+            // formula:
+            // A1)  G_i G_i G_i G_i V_iiii +
+            // B1)  3 G_i G_i G_j G_j V_iijj +
+            // A2)  4 G_i G_i G_i H_ii V_iiiii +
+            // B2)  12 G_i G_j G_j H_ii V_iiijj +
+            // E1)  24 G_i G_i G_j H_ij V_iiijj +
+            // B3)  4 G_i G_i G_i H_jj V_iiijj +
+            // A3)  6 G_i G_i H_ii H_ii V_iiiiii +
+            // B4)  6 G_j G_j H_ii H_ii V_iiiijj +
+            // E2)  48 G_i G_j H_ii H_ij V_iiiijj +
+            // E3)  24 G_i G_i H_ij H_ij V_iiiijj +
+            // B6)  12 G_i G_i H_ii H_jj V_iiiijj +
+            // E4)  24 G_j G_j H_ii H_ij V_iiijjj +
+            // E5)  24 G_i G_j H_ij H_ij V_iiijjj +
+            // B7)  12 G_i G_j H_ii H_jj V_iiijjj +
+            // C1)  6 G_k G_k H_ii H_jj V_iijjkk +
+            // 24 G_j G_k H_ii H_jk V_iijjkk +
+            // 48 G_i G_j H_ik H_jk V_iijjkk +
+            // 12 G_i G_i H_jk H_jk V_iijjkk +
+            // A4)  4 G_i H_ii H_ii H_ii V_iiiiiii +
+            // E6)  24 G_j H_ii H_ii H_ij V_iiiiijj +
+            // E7)  48 G_i H_ii H_ij H_ij V_iiiiijj +
+            // B8)  12 G_i H_ii H_ii H_jj V_iiiiijj +
+            // E8)  48 G_j H_ii H_ij H_ij V_iiiijjj +
+            // E9)  32 G_i H_ij H_ij H_ij V_iiiijjj +
+            // B9)  12 G_j H_ii H_ii H_jj V_iiiijjj +
+            // E10) 48 G_i H_ii H_ij H_jj V_iiiijjj +
+            // 96 G_j H_ij H_ik H_ik V_iiijjkk +
+            // 48 G_k H_ii H_ik H_jj V_iiijjkk +
+            // 48 G_i H_ik H_ik H_jj V_iiijjkk +
+            // 96 G_j H_ii H_ik H_jk V_iiijjkk +
+            // 96 G_i H_ij H_ik H_jk V_iiijjkk +
+            // 24 G_i H_ii H_jk H_jk V_iiijjkk +
+            // C2)  12 G_i H_ii H_jj H_kk V_iiijjkk +
+            // A5)  H_ii H_ii H_ii H_ii V_iiiiiiii +
+            // E11) 24 H_ii H_ii H_ij H_ij V_iiiiiijj +
+            // B10) 4 H_ii H_ii H_ii H_jj V_iiiiiijj +
+            // E12) 32 H_ii H_ij H_ij H_ij V_iiiiijjj +
+            // E13) 24 H_ii H_ii H_ij H_jj V_iiiiijjj +
+            // E14) 8 H_ij H_ij H_ij H_ij V_iiiijjjj +
+            // E15) 24 H_ii H_ij H_ij H_jj V_iiiijjjj +
+            // B11) 3 H_ii H_ii H_jj H_jj V_iiiijjjj +
+            // 48 H_ij H_ij H_ik H_ik V_iiiijjkk +
+            // 48 H_ii H_ik H_ik H_jj V_iiiijjkk +
+            // 96 H_ii H_ij H_ik H_jk V_iiiijjkk +
+            // 12 H_ii H_ii H_jk H_jk V_iiiijjkk +
+            // C3)  6 H_ii H_ii H_jj H_kk V_iiiijjkk +
+            // 96 H_ij H_ij H_ik H_jk V_iiijjjkk +
+            // 48 H_ii H_ik H_jj H_jk V_iiijjjkk +
+            // 96 H_ii H_ij H_jk H_jk V_iiijjjkk +
+            // 16 H_ij H_ij H_ij H_kk V_iiijjjkk +
+            // 24 H_ii H_ij H_jj H_kk V_iiijjjkk +
+            // 24 H_ij H_il H_jk H_kl V_iijjkkll +
+            // 24 H_ij H_ik H_jl H_kl V_iijjkkll +
+            // 32 H_ii H_jk H_jl H_kl V_iijjkkll +
+            // 12 H_ij H_ij H_kl H_kl V_iijjkkll +
+            // 12 H_ii H_jj H_kl H_kl V_iijjkkll +
+            // D1)  H_ii H_jj H_kk H_ll V_iijjkkll
+            
+            const ConstDiagIt dend = hg.cdend();
+            const ConstTriIt tend = hg.ctend();
+
+            // CYCLE A
+            for (ConstDiagIt it = hg.cdbegin(); it != dend; ++it) {
+                const Diag &d = it->second;
+                m += d.grad * d.grad * d.grad * d.grad * v<4>(d.mom); // A1
+                m += 4 * d.grad * d.grad * d.grad * d.hhess * v<5>(d.mom); // A2
+                m += 6 * d.grad * d.grad * d.hhess * d.hhess * v<6>(d.mom); // A3
+                m += 4 * d.grad * d.hhess * d.hhess * d.hhess * v<7>(d.mom); // A4
+                m += d.hhess * d.hhess * d.hhess * d.hhess * v<8>(d.mom); // A5
+                
+                // CYCLE B
+                // optimize by summing it < it2
+                for (ConstDiagIt it2 = hg.cdbegin(); it2 != dend; ++it2) {
+                    if (it->first == it2->first) {
+                        continue;
+                    }
+                    const Diag &d2 = it2->second;
+                    m += 3 * d.grad * d.grad * d2.grad * d2.grad; // B1
+                    m += 12 * d.grad * d2.grad * d2.grad * d.hhess * v<3>(d.mom); // B2
+                    m += 4 * d.grad * d.grad * d.grad * d2.hhess * v<3>(d.mom); // B3
+                    m += 6 * d2.grad * d2.grad * d.hhess * d.hhess * v<4>(d.mom); // B4
+                    // B5 is unused
+                    m += 12 * d.grad * d.grad * d.hhess * d2.hhess * v<4>(d.mom); // B6
+                    m += 12 * d.grad * d2.grad * d.hhess * d2.hhess * v<3>(d.mom) * v<3>(d2.mom); // B7
+                    m += 12 * d.grad * d.hhess * d.hhess * d2.hhess * v<5>(d.mom); // B8
+                    m += 12 * d2.grad * d.hhess * d.hhess * d2.hhess * v<4>(d.mom) * v<3>(d2.mom); // B9
+                    m += 4 * d.hhess * d.hhess * d.hhess * d2.hhess * v<6>(d.mom); // B10
+                    m += 3 * d.hhess * d.hhess * d2.hhess * d2.hhess * v<4>(d.mom) * v<4>(d2.mom); // B11
+                    
+                    // CYCLE C
+                    // optimize by summing it2 < it3
+                    for (ConstDiagIt it3 = hg.cdbegin(); it3 != dend; ++it3) {
+                        if (it->first == it3->first or it2->first == it3->first) {
+                            continue;
+                        }
+                        const Diag &d3 = it3->second;
+                        m += 6 * d3.grad * d3.grad * d.hhess * d2.hhess; // C1
+                        m += 12 * d.grad * d.hhess * d2.hhess * d3.hhess * v<3>(d.mom); // C2
+                        m += 6 * d.hhess * d.hhess * d2.hhess * d3.hhess * v<4>(d.mom); // C3
+                        
+                        // CYCLE D
+                        // optimize by summing it3 < it4
+                        for (ConstDiagIt it4 = hg.cdbegin(); it4 != dend; ++it4) {
+                            if (it->first == it4->first or it2->first == it4->first or it3->first == it4->first) {
+                                continue;
+                            }
+                            const Diag &d4 = it4->second;
+                            m += d.hhess * d2.hhess * d3.hhess * d4.hess; // D1
+                        }
+                    }
+                }
+            }
+            
+            // CYCLE E
+            for (ConstTriIt it = hg.ctbegin(false); it != tend; ++it) {
+                const Diag &d1 = it.diag1();
+                const Diag &d2 = it.diag2();
+                const Real &hhess = *it;
+                // IMPORTANT: symmetrize all terms!
+                m += 24 * d1.grad * d1.grad * d2.grad * hhess * v<3>(d1.mom); // E1
+                m += 48 * d1.grad * d2.grad * d1.hhess * hhess * v<4>(d1.mom); // E2
+                m += 24 * d1.grad * d1.grad * hhess * hhess * v<4>(d1.mom); // E3
+                m += 24 * d1.grad * d2.grad * d1.hhess * hhess * v<3>(d1.mom) * v<3>(d2.mom); // E4
+                m += 24 * d1.grad * d2.grad * hhess * hhess * v<3>(d1.mom) * v<3>(d2.mom); // E5
+            }
+            
+            // INCOMPLETE!!
+            
+            return m;
+        }
 
         template<typename Real>
         Real compute_mom(const HessGrad<Real> &hg, const int n) {

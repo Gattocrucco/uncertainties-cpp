@@ -146,6 +146,18 @@ namespace uncertainties {
                 }
             }
             
+            const Real *tri_find(const Id id1, const Id id2) const noexcept {
+                const Id minid = std::min(id1, id2);
+                const Id maxid = std::max(id1, id2);
+                using It = typename std::map<IdPair, Real>::const_iterator;
+                const It it = trimap.find({minid, maxid});
+                if (it != trimap.end()) {
+                    return it->second;
+                } else {
+                    return nullptr;
+                }
+            }
+            
             inline Real &hhess(const Id minid, const Id maxid) {
                 return minid != maxid ? this->tri(minid, maxid) : this->diag(minid).hhess;
             }

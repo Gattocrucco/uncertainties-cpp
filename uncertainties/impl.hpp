@@ -62,19 +62,19 @@ namespace uncertainties {
             return (e > 0 ? "+" : "-") + std::to_string(std::abs(e));
         }
         
-        // std::array<std::array<int, 9>, 9> compute_binom_coeffs() {
-        //     std::array<std::array<int, 9>, 9> C;
-        //     for (int n = 0; n <= 8; ++n) {
-        //         for (int k = 0; k <= n; ++k) {
-        //             if (n == k or k == 0) {
-        //                 C[n][k] = 1;
-        //             } else {
-        //                 C[n][k] = C[n - 1][k - 1] + C[n - 1][k];
-        //             }
-        //         }
-        //     }
-        //     return C;
-        // }
+        std::array<std::array<int, 9>, 9> compute_binom_coeffs() {
+            std::array<std::array<int, 9>, 9> C;
+            for (int n = 0; n <= 8; ++n) {
+                for (int k = 0; k <= n; ++k) {
+                    if (n == k or k == 0) {
+                        C[n][k] = 1;
+                    } else {
+                        C[n][k] = C[n - 1][k - 1] + C[n - 1][k];
+                    }
+                }
+            }
+            return C;
+        }
     }
 
 #ifdef UNCERTAINTIES_EXTERN_UDOUBLE

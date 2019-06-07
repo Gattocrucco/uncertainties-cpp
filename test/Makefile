@@ -12,7 +12,7 @@ benchmarks = fillvector accumulate smallureals
 
 programs = $(tests) $(benchmarks)
 
-objects = $(patsubst %,%.cpp.o,$(programs))
+objects = $(patsubst %,%.cpp.o,$(programs)) uncertainties.cpp.o
 benchmark_objects = $(patsubst %,%.cpp.o,$(benchmarks))
 run_tests = $(patsubst %,run_%,$(tests))
 run_benchmarks = $(patsubst %,run_%,$(benchmarks))
@@ -27,8 +27,6 @@ $(run_tests) $(run_benchmarks): run_%: %
 
 $(programs): %: %.cpp.o uncertainties.cpp.o
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
-uncertainties.cpp.o: uncertainties.cpp ../uncertainties/impl.hpp ../uncertainties/core.hpp
-	$(CC) $(CFLAGS) -c -o $@ $<
 $(objects): %.cpp.o: %.cpp ../uncertainties/*.hpp ../uncertainties/internal/*.hpp
 	$(CC) $(CFLAGS) -c -o $@ $<
 $(benchmark_objects): CFLAGS += -O2

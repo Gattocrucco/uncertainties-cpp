@@ -36,3 +36,5 @@ quickly using linear model approximation, is there something similar for the
 second derivatives? Is the second order correction on least squares a good
 bias correction in typical cases? Is it better to do ML with Edgeworth pdf (and
 would it allow to preserve correlation with data)?
+
+Move `std_moments` and `central_moments` to `UReal2` constructor with option to center moments.

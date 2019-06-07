@@ -28,37 +28,49 @@
 #include "core.hpp"
 
 namespace uncertainties {
-    // namespace internal {
-    //     inline int binom_coeff(const int n, const int k) {
-    //         assert(0 <= n and n <= 8);
-    //         assert(0 <= k and k <= n);
-    //         static const std::array<std::array<int, 9>, 9> coeffs
-    //             = compute_binom_coeffs();
-    //         return coeffs[n][k];
-    //     }
-    //
-    //     template<typename Real>
-    //     std::array<Real, 7> central_moments(const Real &mu,
-    //                                         const std::array<Real, 7> &zm) {
-    //         std::array<Real, 9> mun {1, mu};
-    //         for (int i = 2; i <= 8; ++i) {
-    //             mun[i] = mun[i - 1] * mu;
-    //         }
-    //         std::array<Real, 7> cm;
-    //         for (int n = 2; n <= 8; ++n) {
-    //             const int i = n - 2;
-    //             const int nsign = n % 2 == 0 ? 1 : -1;
-    //             cm[i] = nsign * (1 - n) * mun[n]; // k = 0, 1
-    //             for (int k = 2; k < n; ++k) {
-    //                 const int j = k - 2;
-    //                 const int ksign = k % 2 == 0 ? 1 : -1;
-    //                 cm[i] += nsign * ksign * binom_coeff(n, k) * zm[j] * mun[n - k];
-    //             }
-    //             cm[i] += zm[i]; // k = n
-    //         }
-    //         return cm;
-    //     }
-    // }
+    namespace internal {
+        inline int binom_coeff(const int n, const int k) {
+            assert(0 <= n and n <= 8);
+            assert(0 <= k and k <= n);
+            static const std::array<std::array<int, 9>, 9> coeffs
+                = compute_binom_coeffs();
+            return coeffs[n][k];
+        }
+
+        template<typename Real>
+        std::array<Real, 7> central_moments(const std::array<Real, 8> &zm) {
+            std::array<Real, 9> mun {1};
+            for (int i = 1; i <= 8; ++i) {
+                mun[i] = mun[i - 1] * zm[0];
+            }
+            std::array<Real, 7> cm;
+            for (int n = 2; n <= 8; ++n) {
+                const int i = n - 2;
+                const int nsign = n % 2 == 0 ? 1 : -1;
+                cm[i] = nsign * (1 - n) * mun[n]; // k = 0, 1
+                for (int k = 2; k < n; ++k) {
+                    const int j = k - 1;
+                    const int ksign = k % 2 == 0 ? 1 : -1;
+                    cm[i] += nsign * ksign * binom_coeff(n, k) * zm[j] * mun[n - k];
+                }
+                cm[i] += zm[i + 1]; // k = n
+            }
+            return cm;
+        }
+        
+        template<typename Real>
+        std::array<Real, 6> std_moments(const std::array<Real, 7> &m) {
+            std::array<Real, 6> stdm;
+            using std::sqrt;
+            const Real s = sqrt(m[0]);
+            Real sn = m[0];
+            for (int i = 0; i < 6; ++i) {
+                sn *= s;
+                stdm[i] = m[i + 1] / sn;
+            }
+            return stdm;
+        }
+    }
     
     namespace distr {
         template<typename Number>

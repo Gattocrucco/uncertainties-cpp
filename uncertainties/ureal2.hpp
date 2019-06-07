@@ -505,6 +505,11 @@ namespace uncertainties {
     inline Real sdev(UReal2<Real, prop> &x) noexcept {
         return x.s();
     }
+
+#ifdef UNCERTAINTIES_EXTERN_UDOUBLE2
+    extern template class UReal2<double, Prop::est>;
+    extern template class UReal2<double, Prop::mean>;
+#endif
 }
 
 #endif /* end of include guard: UNCERTAINTIES_UREAL2_HPP_4F22829C */

@@ -1,5 +1,5 @@
 CC = c++
-CFLAGS = -std=c++11 -g -I.. -I/usr/local/include/eigen3
+CFLAGS = -std=c++11 -g -I.. -I/usr/local/include/eigen3 -DUNCERTAINTIES_EXTERN_UDOUBLE2
 LDFLAGS = -lc++
 
 ########################################################################

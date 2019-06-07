@@ -768,6 +768,10 @@ namespace uncertainties {
         
     using udouble = UReal<double>;
     using ufloat = UReal<float>;
+
+#ifdef UNCERTAINTIES_EXTERN_UDOUBLE
+    extern template class UReal<double>;
+#endif
 }
 
 #endif /* end of include guard: UNCERTAINTIES_UREAL_HPP_07A47EC2 */

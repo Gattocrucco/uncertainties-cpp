@@ -10,9 +10,9 @@ Implement `numeric_limits`. In namespace `uncertainties` or `std`? Look for what
 
 Check if `UReal` works as user type to Eigen.
 
-Fourth order momentum (written by hand).
+Test and debug fourth order momentum.
 
-Third and fourth order correlation functions (automatical generation).
+Third and fourth order correlation functions (automatical generation). First do it with non optimized iterations.
 
 Check higher order correlation functions using relations with lower order
 correlations if there are identical arguments.
@@ -23,7 +23,7 @@ Implement `UReal2::binary_assign`.
 
 Think a sensible interface to allow inplace unary operations
 (implement `UReal(2)::unary_inplace`). (Second optional argument to all the
-unary functions in `math.hpp`?)
+unary functions in `math.hpp`? => No because they have to return something in one case and nothing in the other.)
 
 Edgeworth series to compute the pdf. Optionally allow to compress it so it stays
 positive (exponential with crude estimation of the mode?). Generalize Edgeworth

@@ -152,7 +152,7 @@ namespace uncertainties {
                 using It = typename std::map<IdPair, Real>::const_iterator;
                 const It it = trimap.find({minid, maxid});
                 if (it != trimap.end()) {
-                    return it->second;
+                    return &it->second;
                 } else {
                     return nullptr;
                 }

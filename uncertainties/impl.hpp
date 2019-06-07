@@ -33,6 +33,14 @@ This header contains non-template code to be compiled once.
 
 #include "core.hpp"
 
+#ifdef UNCERTAINTIES_EXTERN_UDOUBLE
+#include "ureal.hpp"
+#endif
+
+#ifdef UNCERTAINTIES_EXTERN_UDOUBLE2
+#include "ureal2.hpp"
+#endif
+
 namespace uncertainties {
     namespace internal {
         std::atomic<Id> last_id {0}; // must be >= 0
@@ -68,6 +76,15 @@ namespace uncertainties {
         //     return C;
         // }
     }
+
+#ifdef UNCERTAINTIES_EXTERN_UDOUBLE
+    template class UReal<double>;
+#endif
+    
+#ifdef UNCERTAINTIES_EXTERN_UDOUBLE2
+    template class UReal2<double, Prop::est>;
+    template class UReal2<double, Prop::mean>;
+#endif
 }
 
 #endif /* end of include guard: UNCERTAINTIES_IMPL_HPP_8AC76B25 */

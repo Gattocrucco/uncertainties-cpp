@@ -270,7 +270,7 @@ namespace uncertainties {
                     m += 4 * d.hhess * d.hhess * d.hhess * d2.hhess * v<6>(d.mom); // B10
                     m += 3 * d.hhess * d.hhess * d2.hhess * d2.hhess * v<4>(d.mom) * v<4>(d2.mom); // B11
                     
-                    // CYCLE C: sum_{k > j}
+                    // CYCLE C: sum_k with k > j
                     ConstDiagIt it3 = it2;
                     for (++it3; it3 != dend; ++it3) {
                         if (it->first == it3->first) {
@@ -282,7 +282,7 @@ namespace uncertainties {
                         m += 2 * 12 * d.grad * d.hhess * d2.hhess * d3.hhess * v<3>(d.mom); // C2_ijk + C2_ikj
                         m += 2 * 6 * d.hhess * d.hhess * d2.hhess * d3.hhess * v<4>(d.mom); // C3_ijk + C3_ikj
                         
-                        // CYCLE D: sum_{l > k}
+                        // CYCLE D: sum_l with l > k
                         ConstDiagIt it4 = it3;
                         for (++it4; it4 != dend; ++it4) {
                             if (it->first == it4->first) {
@@ -339,8 +339,8 @@ namespace uncertainties {
                 m += 48 * d1.grad * d2.hhess * hhess * hhess * v<4>(d2.mom) * v<3>(d1.mom); // E8(j, i)
                 m += 32 * d1.grad * hhess * hhess * hhess * v<4>(d1.mom) * v<3>(d2.mom); // E9(i, j)
                 m += 32 * d2.grad * hhess * hhess * hhess * v<4>(d2.mom) * v<3>(d1.mom); // E9(j, i)
-                m += 48 * d1.grad * d1.hess * hhess * d2.hhess * v<4>(d1.mom) * v<3>(d2.mom); // E10(i, j)
-                m += 48 * d2.grad * d2.hess * hhess * d1.hhess * v<4>(d2.mom) * v<3>(d1.mom); // E10(j, i)
+                m += 48 * d1.grad * d1.hhess * hhess * d2.hhess * v<4>(d1.mom) * v<3>(d2.mom); // E10(i, j)
+                m += 48 * d2.grad * d2.hhess * hhess * d1.hhess * v<4>(d2.mom) * v<3>(d1.mom); // E10(j, i)
                 m += 24 * d1.hhess * d1.hhess * hhess * hhess * v<6>(d1.mom); // E11(i, j)
                 m += 24 * d2.hhess * d2.hhess * hhess * hhess * v<6>(d2.mom); // E11(j, i)
                 m += 32 * d1.hhess * hhess * hhess * hhess * v<5>(d1.mom) * v<3>(d2.mom); // E12(i, j)
@@ -419,7 +419,7 @@ namespace uncertainties {
                     }
                 }
                 
-                // CYCLE I: sum_k
+                // CYCLE I: sum_{k < l}
                 // could be optimized by using a `SimpleTriIt` that does
                 // not walk the diagonal
                 for (ConstTriIt it2 = hg.ctbegin(true); it2 != tend; ++it2) {
@@ -456,7 +456,7 @@ namespace uncertainties {
 
         template<typename Real>
         Real compute_mom(const HessGrad<Real> &hg, const int n) {
-            assert(n >= 1 and n <= 3);
+            assert(n >= 1 and n <= 4);
             switch (n) {
                 case 1:
                 return compute_m1(hg);
@@ -464,6 +464,8 @@ namespace uncertainties {
                 return compute_m2(hg);
                 case 3:
                 return compute_m3(hg);
+                case 4:
+                return compute_m4(hg);
                 default:
                 return 0;
             }

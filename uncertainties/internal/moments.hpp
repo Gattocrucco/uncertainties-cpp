@@ -53,6 +53,7 @@ namespace uncertainties {
             // B1)  2 H_ij H_ij V_iijj + 
             // B2)  H_ii H_jj V_iijj
             
+            // CYCLE A: sum_i
             for (ConstDiagIt it = hg.cdbegin(); it != hg.cdend(); ++it) {
                 const Diag &d = (*it).second;
                 m += d.grad * d.grad; // A1
@@ -60,6 +61,7 @@ namespace uncertainties {
                 m += d.hhess * d.hhess * v<4>(d.mom); // A3
             }
             
+            // CYCLE B: sum_{i < j}
             const ConstTriIt tend = hg.ctend();
             for (ConstTriIt it = hg.ctbegin(false); it != tend; ++it) {
                 const Diag &d1 = it.diag1();

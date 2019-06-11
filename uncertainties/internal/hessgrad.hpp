@@ -242,12 +242,15 @@ namespace uncertainties {
                         if (diagmax == diagend) {
                             ++diagmin;
                             diagmax = diagmin;
-                            if (diagmax != diagend && ++diagmax != diagend) {
-                                const IdPair id {diagmin->first, diagmax->first};
-                                for (; tri != triend && tri->first < id; ++tri) ;
-                            } else {
-                                diagmin = diagend;
+                            if (diagmax != diagend) {
+                                ++diagmax;
                             }
+                        }
+                        if (diagmax != diagend) {
+                            const IdPair id {diagmin->first, diagmax->first};
+                            for (; tri != triend && tri->first < id; ++tri) ;
+                        } else {
+                            diagmin = diagend;
                         }
                     }
                 }

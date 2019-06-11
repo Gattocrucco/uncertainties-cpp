@@ -195,7 +195,6 @@ int main() {
     
     // test with arbitrary moments
     // x, y independent
-    // E[(xy)^n] = \int dx dy p(x) p(y) x^n y^n = E[x^n] E[y^n]
     // E[(x+y)^n] = \sum_{k=0}^n (n k) E[x^k] E[y^{n-k}]
     // E[(x^2)^n] = E[x^{2n}]
     
@@ -208,6 +207,7 @@ int main() {
         { 2.393417858997477e-01,  1.862753541523876e+00,  1.043117800515642e+00,  4.312283112177668e+00,  3.770708129670418e+00,  1.130784371593390e+01},
         { 4.056950772626715e-01,  3.059295089399554e+00,  3.909491946824366e+00,  1.739515608079365e+01,  4.052581111168719e+01,  1.569803094595993e+02}
     };
+    const std::vector<type> coeffs {1, 1.24, -1.2355, 0.98};
     // const std::vector<type> mu {0, 0, 0, 0};
     // const std::vector<type> sigma {1, 2, 3, 4};
     // const std::vector<std::array<type, 6>> moments {
@@ -218,6 +218,7 @@ int main() {
     // };
     assert(mu.size() == sigma.size());
     assert(mu.size() == moments.size());
+    assert(mu.size() == coeffs.size());
     
     // make variables with given moments
     std::vector<utype> v;
@@ -226,16 +227,20 @@ int main() {
     }
     
     // expression to check moments of
-    utype r = v[0] * v[1] + v[2] * v[3];
+    utype r;
+    for (int i = 0; i < v.size(); ++i) {
+        r = r + coeffs[i] * v[i];
+    }
+    r = r * r;
     
     // center moments around 0 and destandardize
-    std::vector<std::array<type, 9>> zm(moments.size());
-    for (int i = 0; i < moments.size(); ++i) {
+    std::vector<std::array<type, 9>> zm(v.size());
+    for (int i = 0; i < v.size(); ++i) {
         std::array<type, 9> &m = zm[i];
         for (int n = 0; n < m.size(); ++n) {
             m[n] = 0;
+            using std::pow;
             for (int k = 0; k <= n; ++k) {
-                using std::pow;
                 type mk;
                 if (k == 0) mk = 1;
                 else if (k == 1) mk = 0;
@@ -243,30 +248,34 @@ int main() {
                 else mk = moments[i][k - 3] * pow(sigma[i], k);
                 m[n] += unc::internal::binom_coeff(n, k) * mk * pow(mu[i], n - k);
             }
+            m[n] *= pow(coeffs[i], n);
         }
         assert(close(m[0], 1.0));
-        assert(close(m[1], mu[i]));
-    }
-    
-    // compute moments of products
-    std::vector<std::array<type, 9>> mm(2);
-    for (int i = 0; i < mm.size(); ++i) {
-        for (int j = 0; j < mm[i].size(); ++j) {
-            mm[i][j] = zm[2 * i][j] * zm[2 * i + 1][j];
-        }
-        assert(close(mm[i][0], 1.0));
+        assert(close(m[1], coeffs[i] * mu[i]));
     }
     
     // compute moments of sum
     std::array<type, 9> m;
-    assert(m.size() <= mm[0].size());
-    for (int n = 0; n < m.size(); ++n) {
-        m[n] = 0;
-        for (int k = 0; k <= n; ++k) {
-            m[n] += unc::internal::binom_coeff(n, k) * mm[0][k] * mm[1][n - k];
+    m.fill(0);
+    m[0] = 1.0;
+    for (const std::array<type, 9> &addm : zm) {
+        std::array<type, 9> newm;
+        for (int n = 0; n < m.size(); ++n) {
+            newm[n] = 0;
+            for (int k = 0; k <= n; ++k) {
+                newm[n] += unc::internal::binom_coeff(n, k) * m[k] * addm[n - k];
+            }
         }
+        std::copy(newm.begin(), newm.end(), m.begin());
+        assert(close(m[0], 1.0));
     }
-    assert(close(m[0], 1.0));
+    
+    // compute moments of square
+    std::array<type, 5> sm;
+    for (int i = 0; i < sm.size(); ++i) {
+        sm[i] = m[2 * i];
+    }
+    assert(close(sm[0], 1.0));
     
     // center moments around mean
     std::array<type, 9> cm;
@@ -274,11 +283,11 @@ int main() {
         cm[n] = 0;
         for (int k = 0; k <= n; ++k) {
             using std::pow;
-            cm[n] += unc::internal::binom_coeff(n, k) * m[k] * pow(-m[1], n - k);
+            cm[n] += unc::internal::binom_coeff(n, k) * sm[k] * pow(-sm[1], n - k);
         }
     }
     assert(close(cm[0], 1.0));
     assert(close(cm[1], 0.0));
 
-    check(r, {m[1], cm[2], cm[3], cm[4]});
+    check(r, {sm[1], cm[2], cm[3], cm[4]});
 }

@@ -307,16 +307,18 @@ namespace uncertainties {
                     
                     m += 2 * 24 * dt1.grad * dt2.grad * d.hhess * hhess; // F1_ijk + F1_ikj
                     m += 2 * 12 * d.grad * d.grad * hhess * hhess; // F2_ijk + F2_ikj
-                    m += 48 * dt2.grad * dt1.hhess * hhess * d.hhess * (v<3>(dt1.mom) + v<3>(dt2.mom)); // F3_jik + F3_jki
+                    m += 48 * dt2.grad * dt1.hhess * hhess * d.hhess * v<3>(dt1.mom); // F3_jik
+                    m += 48 * dt1.grad * dt2.hhess * hhess * d.hhess * v<3>(dt2.mom); // F3_jki
                     m += 48 * dt1.grad * hhess * hhess * d.hhess * v<3>(dt1.mom); // F4_jik
                     m += 48 * dt2.grad * hhess * hhess * d.hhess * v<3>(dt2.mom); // F4_jki
                     m += 2 * 24 * d.grad * d.hhess * hhess * hhess * v<3>(d.mom); // F5_ijk + F5_ikj
-                    m += 48 * dt1.hhess * hhess * hhess * dt2.hhess * (v<4>(dt1.mom) + v<4>(dt2.mom)); // F5a_jik + F5a_jki
+                    m += 48 * dt1.hhess * hhess * hhess * d.hhess * v<4>(dt1.mom); // F5a_jik
+                    m += 48 * dt2.hhess * hhess * hhess * d.hhess * v<4>(dt2.mom); // F5a_jki
                     m += 2 * 12 * d.hhess * d.hhess * hhess * hhess * v<4>(d.mom); // F6_ijk + F6_ikj
                     m += 2 * 16 * hhess * hhess * hhess * d.hhess * v<3>(dt1.mom) * v<3>(dt2.mom); // F7_kij + F7_kji
                     m += 2 * 24 * dt1.hhess * hhess * dt2.hhess * d.hhess * v<3>(dt1.mom) * v<3>(dt2.mom); // F8_kij + F8_kji
                 }
-            }
+            } // END CYCLE A
             
             // CYCLE E: sum_{i < j}
             for (ConstTriIt it = hg.ctbegin(true); it != tend; ++it) {
@@ -330,8 +332,8 @@ namespace uncertainties {
                 m += 48 * d2.grad * d1.grad * d2.hhess * hhess * v<4>(d2.mom); // E2(j, i)
                 m += 24 * d1.grad * d1.grad * hhess * hhess * v<4>(d1.mom); // E3(i, j)
                 m += 24 * d2.grad * d2.grad * hhess * hhess * v<4>(d2.mom); // E3(j, i)
-                m += 24 * d1.grad * d2.grad * d1.hhess * hhess * v<3>(d1.mom) * v<3>(d2.mom); // E4(i, j)
-                m += 24 * d2.grad * d1.grad * d2.hhess * hhess * v<3>(d2.mom) * v<3>(d1.mom); // E4(j, i)
+                m += 24 * d1.grad * d1.grad * d2.hhess * hhess * v<3>(d1.mom) * v<3>(d2.mom); // E4(i, j)
+                m += 24 * d2.grad * d2.grad * d1.hhess * hhess * v<3>(d2.mom) * v<3>(d1.mom); // E4(j, i)
                 m += 2 * 24 * d1.grad * d2.grad * hhess * hhess * v<3>(d1.mom) * v<3>(d2.mom); // E5(i, j) + E5(j, i)
                 m += 24 * d2.grad * d1.hhess * d1.hhess * hhess * v<5>(d1.mom); // E6(i, j)
                 m += 24 * d1.grad * d2.hhess * d2.hhess * hhess * v<5>(d2.mom); // E6(j, i)
@@ -368,7 +370,7 @@ namespace uncertainties {
                         m += 96 * d.grad * d2.hhess * hhess * hhess2 * v<3>(d2.mom); // G3_kij
                         m += 48 * hhess * hhess * hhess2 * hhess2 * v<4>(d1.mom); // G4_ijk
                         m += 48 * d2.hhess * hhess * d.hhess * hhess2 * v<3>(d2.mom) * v<3>(d.mom); // G5_kij
-                        m += 96 * d2.hhess * hhess * hhess2 * hhess2 * v<3>(d2.mom) * v<3>(d.mom); // G6_jik
+                        m += 96 * d2.hhess * hhess * hhess2 * hhess2 * v<3>(d2.mom) * v<3>(d1.mom); // G6_jik
                     }
                     
                     const Real *hhess3_p = hg.tri_find(it.id2(), it2->first);
@@ -380,7 +382,7 @@ namespace uncertainties {
                         m += 96 * d.grad * d1.hhess * hhess * hhess3 * v<3>(d1.mom); // G3_ikj
                         m += 48 * hhess * hhess * hhess3 * hhess3 * v<4>(d2.mom); // G4_jik
                         m += 48 * d1.hhess * hhess * d.hhess * hhess3 * v<3>(d1.mom) * v<3>(d.mom); // G5_ikj
-                        m += 96 * d1.hhess * hhess * hhess3 * hhess3 * v<3>(d1.mom) * v<3>(d.mom); // G6_ijk
+                        m += 96 * d1.hhess * hhess * hhess3 * hhess3 * v<3>(d1.mom) * v<3>(d2.mom); // G6_ijk
                     }
                     
                     // (PSEUDO-)CYCLE H
@@ -389,11 +391,10 @@ namespace uncertainties {
                         const Real &hhess3 = *hhess3_p;
 
                         m += 96 * d1.grad * hhess * hhess2 * hhess3 * v<3>(d1.mom); // H1_ijk
-                        m += 96 * d1.hhess * hhess * hhess2 * hhess3 * v<4>(d1.mom); // H2_ijk
-                        m += 96 * hhess * hhess * hhess2 * hhess3 * v<3>(d1.mom) * v<3>(d2.mom); // H3_ijk
-                    
                         m += 96 * d2.grad * hhess * hhess3 * hhess2 * v<3>(d2.mom); // H1_jik
+                        m += 96 * d1.hhess * hhess * hhess2 * hhess3 * v<4>(d1.mom); // H2_ijk
                         m += 96 * d2.hhess * hhess * hhess3 * hhess2 * v<4>(d2.mom); // H2_jik
+                        m += 96 * hhess * hhess * hhess2 * hhess3 * v<3>(d1.mom) * v<3>(d2.mom); // H3_ijk
                         m += 96 * hhess * hhess * hhess3 * hhess2 * v<3>(d2.mom) * v<3>(d1.mom); // H3_jik
                         
                         // CYCLE J: sum_l
@@ -419,7 +420,7 @@ namespace uncertainties {
                         
                         m += 2 * 2 * 12 * d.hhess * d3.hhess * hhess * hhess; // L1_klij + L1_lkij + L1_klji + L1_lkji
                     }
-                }
+                } // END CYCLE G
                 
                 // CYCLE I: sum_{k < l}
                 // could be optimized by using a `SimpleTriIt` that does
@@ -451,8 +452,9 @@ namespace uncertainties {
                     // (PSEUDO-)CYCLE K
                     m += 2 * 2 * 12 * Hij * Hij * Hkl * Hkl; // K1_ijkl + K1_jikl + K1_ijlk + K1_jilk
                 }
-            }
+            } // END CYCLE E
             
+            assert(m >= 0);
             return m;
         }
 

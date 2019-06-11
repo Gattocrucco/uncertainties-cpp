@@ -21,7 +21,7 @@
 #define UNCERTAINTIES_UREAL_HPP_07A47EC2
 
 /*! \file
-\brief Defines class template `UReal` and basic utilities.
+\brief Defines class template `UReal`.
 */
 
 #include <map>
@@ -29,6 +29,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <utility>
+#include <cassert>
 
 #include "core.hpp"
 
@@ -132,8 +133,9 @@ namespace uncertainties {
     ~~~cpp
     unc::udouble x = {1, 0.1};
     bool ind = x.isindep(); // true
-    unc::udouble y = x + x;
-    ind = y.isindep(); // false
+    unc::udouble y = {0.5, 0.2};
+    unc::udouble z = x + y;
+    ind = z.isindep(); // false
     ~~~
     
     A value uniquely identifying an independent variable can be obtained with
@@ -141,28 +143,25 @@ namespace uncertainties {
     
     ~~~cpp
     unc::Id id = x.indepid(); // some value
-    id = y.indepid(); // returns unc::invalid_id
+    id = y.indepid(); // a value different from the one of x
+    id = z.indepid(); // returns unc::invalid_id
     ~~~
     
-    Note that a variable that is formally dependent but really independent
-    may be generated:
+    If a computation involves only one variable, the result still classifies as
+    independent, in particular a copy of an independent variable is still
+    independent although it is completely correlated with the original:
     
     ~~~cpp
-    unc::udouble z = x - x; // 0 +/- 0, exactly zero
-    id = z.isindep(); // false
-    ~~~
-    
-    An independent variable can be copied and the copy is independent:
-    
-    ~~~cpp
+    z = x + x;
+    id = z.isindep(); // true
     y = x;
     x.isindep(); // true
     y.isindep(); // true
     corr(x, y); // 1.0
     ~~~
-    
+        
     So the property of an independent variable is that it has either zero
-    or full (1 or -1) correlation with any other variable.
+    or full (1 or -1) correlation with any other independent variable.
     
     Efficiency
     ==========
@@ -375,13 +374,13 @@ namespace uncertainties {
         \brief Return true if the variable is independent.
         
         Independent implies that the variable can only have 0, +1 or -1
-        correlation with any other independent variable. In practice a variable
-        is independent after construction and independent variables can be
-        obtained only (but not necessarily) by applying a unary operation
-        to an independent variable.
+        correlation with any other independent variable. A variable
+        is independent just after construction and a computation that uses
+        only one variable produces an independent variable.
         */
         inline bool isindep() const noexcept {
-            return this->id >= 0;
+            assert(this->id < 0 or this->sigma.size() == 0);
+            return this->sigma.size() <= 1;
         }
         
         /*!
@@ -390,8 +389,17 @@ namespace uncertainties {
         
         If it is not, it returns `invalid_id`.
         */
-        inline Id indepid() const noexcept {
-            return this->id;
+        Id indepid() const noexcept {
+            assert(this->id < 0 or this->sigma.size() == 0);
+            if (this->id >= 0) {
+                return this->id;
+            } else if (this->sigma.size() == 0) {
+                return 0;
+            } else if (this->sigma.size() == 1) {
+                return this->sigma.begin()->first;
+            } else {
+                return invalid_id;
+            }
         }
         
         /*!
@@ -401,14 +409,6 @@ namespace uncertainties {
             return this->mu;
         }
         
-        /*!
-        \brief Return the standard deviation.
-        
-        For an independent variable it means just returning a number. If
-        the variable is dependent a potentially expensive calculation is
-        performed. This is the const-qualified version of `s` and so the
-        result is not cached and is computed at every invocation.
-        */
         Real s() const {
             if (this->id >= 0) {
                 using std::abs;
@@ -445,7 +445,7 @@ namespace uncertainties {
         \brief Format the variable.
         
         This function just calls `format(x, args...)`. The `format` function
-        is defined in `io.hpp`. Using this function will generated errors if
+        is defined in `io.hpp`. Using this function will produce errors if
         `io.hpp` has not been included.
         */
         template<typename... Args>
@@ -459,9 +459,9 @@ namespace uncertainties {
         The result is a variable which is identical to `x` apart from the mean
         which is set to `n`.
         */
-        friend UReal<Real> change_nom(const UReal<Real> &x, const Real n) {
+        friend UReal<Real> change_nom(const UReal<Real> &x, const Real &n) {
             UReal<Real> y = x;
-            y.mu = std::move(n);
+            y.mu = n;
             return y;
         }
         
@@ -496,6 +496,7 @@ namespace uncertainties {
                     cov += x.sdev * y.sdev;
                 }
             } else if (x.id < 0 or y.id < 0) {
+                // simplify and optimize using synchronized iteration
                 const UReal<Real> *min_size, *max_size;
                 if (x.sigma.size() > y.sigma.size()) {
                     min_size = &y;
@@ -528,13 +529,6 @@ namespace uncertainties {
             return cov;
         }
         
-        /*!
-        \brief Compute the variance of `x`.
-        
-        Note that `cov(x, x) == var(x)`, but `var` is faster. Also
-        `var(x) == x.s() * x.s()`. The same caching considerations of the
-        member function `s` apply here.
-        */
         friend Real var(const UReal<Real> &x) {
             if (x.id >= 0 or x.sdev >= 0) {
                 return x.sdev * x.sdev;

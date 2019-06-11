@@ -5,7 +5,7 @@ LDFLAGS = -lc++
 ########################################################################
 
 tests = urealhpp iohpp stathpp mathhpp urealshpp functionshpp ureal2hpp distrhpp
-tests += generic format ureals math
+tests += generic format ureals math indep
 tests += mpfrformat mpfrmath mpfrureals
 tests += cast2 generic2 deriv2 distr math2 checkmom
 benchmarks = fillvector accumulate smallureals

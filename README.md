@@ -6,10 +6,11 @@ style="display: none;" />
 <img src="uncertainties-cpp-512.png"
 style="width: 256px; float: right; left-margin: 1em;" />
 
-C++ header library for first-order uncertainty propagation. More or less a port
-of the python package [uncertainties](https://github.com/lebigot/uncertainties)
-(but see also [gvar](https://github.com/gplepage/gvar),
-[soerp](https://github.com/tisimst/soerp) and
+C++ header library for first- and second-order uncertainty propagation. More or
+less a port of the python packages
+[uncertainties](https://github.com/lebigot/uncertainties) and
+[soerp](https://github.com/tisimst/soerp) (but see also
+[gvar](https://github.com/gplepage/gvar) and
 [measurements.jl](https://github.com/JuliaPhysics/Measurements.jl)).
 
 ## Installation
@@ -24,14 +25,16 @@ alongside your code) and make sure to include the special header
 ### Requirements
 
 The C++ dialect is C++11. The header `ureals.hpp` (not to be confused with
-`ureal.hpp`) requires [Eigen](http://eigen.tuxfamily.org).
+`ureal.hpp`) and the second-order propagation class require
+[Eigen](http://eigen.tuxfamily.org).
 
 ## Usage
 
 All the definitions are in the namespace `uncertainties`. The library is split
-in various headers. The principal header is `ureal.hpp` which defines the class
-template `UReal`, which is aliased to `udouble = UReal<double>` and
-`ufloat = UReal<float>`.
+in various headers. For first-order propagation, the principal header is
+`ureal.hpp` which defines the class template `UReal`, which is aliased to
+`udouble = UReal<double>` and `ufloat = UReal<float>`. The header `ureal2.hpp`
+defines the similar class `UReal2` that does second-order propagation.
 
 Basic example:
 ~~~cpp
@@ -50,16 +53,15 @@ int main() {
 
 ## Features
 
-* Independent variables do not use the heap.
-
-* Same class for independent and dependent variables.
+* Clear distinction between mean estimation and bias correction for second-order propagation.
 
 * User-defined types supported.
 
-Note: you cannot use `std::complex<udouble, udouble>` because it is not
-supported by the standard library and you cannot use
-`UReal<std::complex<double>>` because it does not keep track of the correlation
-between the real and imaginary parts.
+* Same class for independent and dependent variables.
+
+* First-order independent variables do not use the heap.
+
+Note: complex numbers are not supported.
 
 ## Documentation
 

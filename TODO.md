@@ -1,3 +1,5 @@
+## UReal and UReal2
+
 Function to parse strings.
 
 In math functions with singularities in the derivative, check that the mean is
@@ -6,9 +8,35 @@ not close to the singularity and warn the user on cerr.
 Implement `numeric_limits`. In namespace `uncertainties` or `std`? Look for what
 `boost::mp` does and what `Eigen` expects.
 
-`UReal::isindep` should return true if `id < 0` but `sigma.size() <= 1`.
-
 Check if `UReal` works as user type to Eigen.
+
+Python interface. (Standard C extension compiled with specific types?)
+
+Use cholesky in `ureals`.
+
+Find a C++ template library for complex numbers with arbitrary numerical type
+(maybe in Boost?) (std::complex need to be defined only for builtin types) and
+check UReal(2) works with that.
+
+## UReal
+
+Maybe allow higher moments with first order propagation? They are trivial, for example symmetric distributions will never produce asymmetries, but in general they may be useful
+=> No because it changes too much UReal.
+
+Add grad member function to compute derivatives.
+
+Rewrite `UReal::cov` using synchronized iteration.
+
+Since the gradient is already stored in a binary tree, maybe use balanced sum
+to compute the standard deviation?
+
+## UReal2
+
+Check that `ureals` works with `UReal2`.
+
+Make grad and hess publicly usable.
+
+Write doc.
 
 Third and fourth order correlation functions (automatical generation). First do it with non optimized iterations. Can I compute correlation functions using the mean correction of expressions?
 => No, example: E[xxx] = 0 if xxx is computed with UReal2
@@ -27,8 +55,6 @@ unary functions in `math.hpp`? => No because they have to return something in on
 Edgeworth series to compute the pdf. Optionally allow to compress it so it stays
 positive (exponential with crude estimation of the mode?). Generalize Edgeworth
 series to higher dimensionality. Or, is maximum entropy viable if I have 3 and 4 point correlation functions?
-
-Python interface. (Standard C extension compiled with specific types?)
 
 Fit with propagation like `lsqfit`. The gradient wrt data can be estimated
 quickly using linear model approximation, is there something similar for the

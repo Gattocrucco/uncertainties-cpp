@@ -1,3 +1,7 @@
+## Generic
+
+See how to put package on homebrew.
+
 ## UReal and UReal2
 
 Function to parse strings.
@@ -18,6 +22,11 @@ Find a C++ template library for complex numbers with arbitrary numerical type
 (maybe in Boost?) (std::complex need to be defined only for builtin types) and
 check UReal(2) works with that.
 
+Remove specializations with `float` since probably it suffers from precision
+problems. (Or not?)
+
+Use the `UNCERTAINTIES_EXTERN_*` macros in all headers.
+
 ## UReal
 
 Maybe allow higher moments with first order propagation? They are trivial, for example symmetric distributions will never produce asymmetries, but in general they may be useful
@@ -32,7 +41,17 @@ to compute the standard deviation?
 
 ## UReal2
 
+Remove moment caching altogether?
+
+Rescale internally standardized moments such that the 8th std moment of a
+normal distribution is 1, this should increase numerical stability. The
+rescaling should have few digits if written in base 2. The scaling can be
+inverted just before returning from `UReal::m()`. => No because the sigma is in
+the gradient and hessian and having different sigmas around will make the change
+ineffective.
+
 Check that `ureals` works with `UReal2`.
+=> It will not by design, higher order moments must be specified.
 
 Make grad and hess publicly usable.
 
@@ -52,15 +71,8 @@ Think a sensible interface to allow inplace unary operations
 (implement `UReal(2)::unary_inplace`). (Second optional argument to all the
 unary functions in `math.hpp`? => No because they have to return something in one case and nothing in the other.)
 
-Edgeworth series to compute the pdf. Optionally allow to compress it so it stays
-positive (exponential with crude estimation of the mode?). Generalize Edgeworth
-series to higher dimensionality. Or, is maximum entropy viable if I have 3 and 4 point correlation functions?
+Maximum entropy pdf given the moments. See RV Abramov paper.
 
-Fit with propagation like `lsqfit`. The gradient wrt data can be estimated
-quickly using linear model approximation, is there something similar for the
-second derivatives? Is the second order correction on least squares a good
-bias correction in typical cases? Is it better to do ML with Edgeworth pdf (and
-would it allow to preserve correlation with data)?
-=> See notebook June 11
+Fit with propagation like `lsqfit` but at second order. See notebook June 11.
 
 Move `std_moments` and `central_moments` to `UReal2` constructor with option to center moments.

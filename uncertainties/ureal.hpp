@@ -38,7 +38,7 @@
 */
 namespace uncertainties {
     /*!
-    \brief Represents a number with associated uncertainty.
+    \brief Class for first order error propagation.
     
     Basics
     ======

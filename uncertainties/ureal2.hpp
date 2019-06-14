@@ -20,6 +20,10 @@
 #ifndef UNCERTAINTIES_UREAL2_HPP_4F22829C
 #define UNCERTAINTIES_UREAL2_HPP_4F22829C
 
+/*! \file
+\brief Defines class template `UReal2`.
+*/
+
 #include <array>
 #include <string>
 #include <cmath>
@@ -66,6 +70,200 @@ namespace uncertainties {
         }
     }
     
+    /*!
+    \brief Class for second order error propagation.
+    
+    Theory
+    ======
+    
+    It may seem pedantic to start the documentation of a class with
+    mathematical theory, but second-order uncertainty propagation has
+    additional caveats compared to first-order propagation that require user
+    awareness right from the beginning. In particular, you may have noticed that
+    there is a template parameter `prop` with no default value. What should
+    you do with that? You can not leave it unspecified if you want to use the
+    class. So, read on.
+    
+    Recap on moments
+    ----------------
+    
+    Let \f$ x \f$ be a real random variable, i.e. a variable with an associated
+    probability density function \f$ p(x) \ge 0 \f$. The _expected value_ of
+    a function \f$ f(x) \f$ with respect to the variable \f$ x \f$ is defined as
+    
+    \f[
+    E[f(x)] = \int_{-\infty}^{\infty} \mathrm{d}x\, p(x)f(x).
+    \f]
+    
+    The intuitive meaning of the expected value is an average: it sums up
+    all the possible values of \f$ f(x) \f$ weighting them with the
+    probability \f$ p(x)\mathrm{d}x \f$.
+    
+    For the particular choice \f$ f(x) = x^n \f$, one obtains the _moments_ of
+    the distribution \f$ p(x) \f$:
+    
+    \f[
+    m_n = E[x^n].
+    \f]
+    
+    The moment \f$ m_1 = E[x] \f$ is the _mean_ of the distribution. If one
+    translates \f$ x \f$ to have zero mean, the new moments are called
+    _central moments_:
+    
+    \f[
+    \mu_n = E[(x - E[x])^n].
+    \f]
+    
+    The _variance_ is \f$ \mu_2 \f$, and the _standard deviation_ is \f$ \sigma
+    = \sqrt{\mu_2} \f$. By rescaling the \f$ n \f$th central moment with the
+    \f$ n \f$th power of \f$ \sigma \f$, we obtain the _standardized central
+    moments_:
+    
+    \f[
+    k_n = \frac {\mu_n} {\sigma^n} \quad (\sigma = \sqrt{\mu_2}).
+    \f]
+    
+    Observation: by definition \f$ m_0 = \mu_0 = k_0 = 1 \f$ (because \f$ p(x)
+    \f$ is normalized), \f$ \mu_1 = k_1 = 0 \f$, and \f$ k_2 = 1 \f$.
+    
+    The first moments have an intuitive interpretation: the standard deviation
+    \f$ \sigma \f$ gives a measure of the width of the distribution, and is
+    commonly used as the "error", the _skewness_ \f$ k_3 \f$ indicates if the
+    distribution is asymmetric (\f$ k_3 > 0 \f$ mean distribution with tail on
+    the right, \f$ k_3 < 0 \f$ on the left), the _kurtosis_ \f$ k_4 \f$
+    indicates that the distribution has fat tails, if large, and suggests that
+    the distribution may be bimodal, if small. To have an idea of what "small"
+    and "large" mean for the kurtosis, consider that it can be shown that \f$
+    k_4 \ge 1 + k_3^2 \f$ and that for a normal (gaussian) distribution, \f$
+    k_4 = 3 \f$.
+    
+    Moment propagation
+    ------------------
+    
+    Let \f$ x \f$ be a random variable with central moments \f$ \mu_n \f$. We
+    can always translate \f$ x \f$ to have zero mean, such that
+    \f$ \mu_n = E[x^n] \f$ (just to simplify calculations).
+    
+    Let \f$ y \f$ be a random variable defined by \f$ y = f(x) \f$. We expand
+    \f$ f \f$ in Taylor series up to second order around the mean of \f$ x \f$
+    (which is zero):
+    
+    \f[
+    f(x) = f(0) + f'(0) x + \frac12 f''(0) x^2 + O(x^3).
+    \f]
+    
+    Again, we can traslate \f$ y \f$ to have \f$ f(0) = 0 \f$, and translate
+    back later. We now compute the moments of \f$ y \f$ using the expansion.
+    First the mean:
+    
+    \f{align*}{
+    E[y] &= E[f(x)] \approx \\
+    &\approx E \left[ f'(0) x + \frac12 f''(0) x^2 \right] = \\
+    &= \frac12 f''(0) E[x^2].
+    \f}
+    
+    (We have used the properties that \f$ E[A + B] = E[A] + E[B] \f$ and
+    \f$ E[\alpha A(x)] = \alpha E[A(x)] \f$.)
+    
+    Computing the variance \f$ E[(y-E[y])^2] \f$ is cumbersome, so we compute
+    \f$ E[y^2] \f$ and observe that \f$ E[(y-E[y])^2] = E[y^2] - E[y]^2 \f$.
+    We also drop the zero in \f$ f'(0) \f$ and \f$ f''(0) \f$ for brevity:
+    
+    \f{align*}{
+    E[y^2]
+    &\approx E\left[ \left( f'x + \frac12 f''x^2 \right)^2 \right] = \\
+    &= E\left[ f'f'x^2 + f'f''x^3 + \frac14 f''f''x^4 \right] = \\
+    &= f'f'E[x^2] + f'f''E[x^3] + \frac14 f''f''E[x^4].
+    \f}
+    
+    We can go on to arbitrary moments and also generalize to the case of many
+    variables (\f$ y = f(x_1, x_2, \ldots) \f$), but the reader is probably
+    already bored enough. These computations will be all carried on by the code
+    under the hood. Just remember the following things.
+    
+    First thing: let's write the formula for the mean of \f$ y \f$ by
+    translating back everything:
+    
+    \f{align*}{
+    E[y] &\approx f(E[x]) + \frac12 f''(E[x]) E[(x-E[x])^2] = \\
+    &= f(E[x]) + \frac12 f''(E[x]) \sigma_x^2.
+    \f}
+    
+    Had we done a first-order error propagation, the formula would have been
+    \f$ E[y] \approx f(E[x]) \f$, which intuitively reads «just compute the
+    function at the mean of \f$ x \f$». The new term reads «increase the
+    mean is the function bends upward, decrease if the function bends downward»,
+    which actually makes sense.
+    
+    Second thing: in general, in the formula for \f$ E[y^n] \f$, the highest
+    \f$ x \f$ moment that appears is \f$ E[x^{2n}] \f$.
+    
+    Estimates
+    ---------
+    
+    We have defined second order moment propagation, we know what it means, we
+    could write down all the formulae. So we can start using the class, right?
+    Wrong.
+    
+    We first need to introduce the concept of _estimate_. Let \f$ \theta \f$ be
+    the "true value" of an unknown quantity we have to measure. Tipically the
+    output of the measure is a random variable \f$ \hat\theta \f$ that in some
+    sense should “estimate” \f$ \theta \f$. Conventionally, \f$ \hat\theta \f$
+    is considered a good estimate if these two properties hold:
+    
+    1) \f$ E[\hat\theta] = \theta \f$, and
+    
+    2) the shape of the distribution of \f$ \hat\theta \f$ does not depend, or
+    depends “not too much” on the value of \f$ \theta \f$.
+    
+    Property (1) is called _unbiasedness_, because the _bias_ of \f$ \hat\theta
+    \f$ is defined as \f$ E[\hat\theta] - \theta \f$. This property may or may
+    not make sense to you at first sight, but please trust me on its usefulness
+    as conventional choice since a complete explanation would be a bit long.
+    
+    Property (2) has something to do with confidence intervals. You may have
+    encountered something like “the 95 % confidence interval is given by
+    \f$ \pm 2 \f$ standard deviations”, well, for something like that to have a
+    chance to be true, property (2) must hold.
+    
+    A simple example in which property (2) does not hold is when you have a
+    constant relative error, which means the standard deviation of the
+    distribution of \f$ \hat\theta \f$ is proportional to \f$ \theta \f$, so
+    the shape *does* change significatively with \f$ \theta \f$. (In this case
+    it may be a good idea to use an estimate of \f$ \log\theta \f$.)
+    
+    Now, let's suppose you have measured \f$ \theta \f$, in the sense outlined
+    above, and that you are interested in measuring the transformed quantity
+    \f$ \theta' = f(\theta) \f$. We have to obtain a measure \f$ \hat\theta'
+    \f$ that fulfills the properties, starting from \f$ \hat\theta \f$. The
+    first thing that comes to mind is just using \f$ \hat\theta' =
+    f(\hat\theta) \f$. Let's compute the bias of this quantity. We have to
+    compute \f$ E[f(\hat\theta)] \f$. If we do the calculation to second order,
+    we can just apply the formula we found before:
+    
+    \f{align*}{
+    E[\hat\theta' = f(\hat\theta)]
+    &\approx f(E[\hat\theta]) + \frac12 f''(E[\hat\theta]) \sigma_{\hat\theta}^2 = \\
+    &= f(\theta) + \frac12 f''(\theta) \sigma_{\hat\theta}^2 = \\
+    &= \theta' + \frac12 f''(\theta) \sigma_{\hat\theta}^2
+    \f}
+    
+    So this choice of \f$ \hat\theta' \f$ is biased. Considering that
+    \f$ f''(\hat\theta) = f''(\theta) + O(\hat\theta - \theta) \f$, we can just
+    subtract the bias to obtain an unbiased (to second order) estimate:
+    
+    \f{align*}{
+    \hat\theta' = f(\hat\theta) - \frac12 f''(\hat\theta) \sigma_{\hat\theta}^2.
+    \f}
+    
+    The last formula we wrote is quite important. It differs from the
+    propagation formula in the sign of the second term. So, when propagating
+    a measurement through calculations we actually have to invert the sign of
+    the original formula... What's going on?
+    
+    Let's make a simple example.
+    
+    */
     template<typename Real, Prop prop>
     class UReal2 {
     private:

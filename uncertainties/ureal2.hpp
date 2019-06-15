@@ -184,9 +184,9 @@ namespace uncertainties {
     First thing: let's write the formula for the mean of \f$ y \f$ by
     translating back everything:
     
-    \f{align*}{
-    E[y] &\approx f(E[x]) + \frac12 f''(E[x]) E[(x-E[x])^2] = \\
-    &= f(E[x]) + \frac12 f''(E[x]) \sigma_x^2.
+    \f{align}{
+    E[y] &\approx f(E[x]) + \frac12 f''(E[x]) E[(x-E[x])^2] = \notag \\
+    &= f(E[x]) + \frac12 f''(E[x]) \sigma_x^2. \tag{1} \label{eq:mprop}
     \f}
     
     Had we done a first-order error propagation, the formula would have been
@@ -252,8 +252,10 @@ namespace uncertainties {
     \f$ f''(\hat\theta) = f''(\theta) + O(\hat\theta - \theta) \f$, we can just
     subtract the bias to obtain an unbiased (to second order) estimate:
     
-    \f{align*}{
+    \f{align}{
     \hat\theta' = f(\hat\theta) - \frac12 f''(\hat\theta) \sigma_{\hat\theta}^2.
+    \tag{2}
+    \label{eq:eprop}
     \f}
     
     The last formula we wrote is quite important. It differs from the
@@ -261,7 +263,210 @@ namespace uncertainties {
     a measurement through calculations we actually have to invert the sign of
     the original formula... What's going on?
     
-    Let's make a simple example.
+    Let's make a simple concrete example. Let \f$ \vec v = v_x \hat x \f$ be
+    the velocity of a particle moving on a 1D axis. Let's suppose that the
+    particle is still, i.e. \f$ v_x = 0 \f$. We can measure \f$ v_x \f$
+    obtaining estimates \f$ \hat v_x \f$ that are distributed normally with
+    standard deviation \f$ \sigma_{\hat v_x} = 1 \f$ (arbitrary units), and of
+    course unbiased: \f$ E[\hat v_x] = v_x = 0 \f$.
+    
+    Suppose that, given a masurement of the velocity, we want to compute the
+    kinetical energy \f$ E = 1/2 m v_x^2 \f$. The particle is still, so we
+    want to obtain \f$ E = 0 \f$ on average if we repeat the measurement many
+    times. If we compute \f$ \hat E = 1/2 m \hat v_x^2 \f$, we have always
+    \f$ \hat E \ge 0 \f$, so \f$ E[\hat E] \f$ will be a positive number, which
+    means \f$ \hat E \f$ will be biased.
+    
+    We can compute the bias with formula \f$ \eqref{eq:mprop} \f$, which in this
+    case is exact because the formula is quadratic:
+    
+    \f{align*}{
+    E \left[ \frac12 m \hat v_x^2 \right]
+    &= \frac12 m v_x^2 + \frac12 m \sigma_{\hat v_x}^2 = \\
+    &= \frac12 m.
+    \f}
+    
+    To get an unbiased estimate, we just subtract the bias:
+    
+    \f[
+    \hat E_{\text{unbiased}} = \frac12 m \hat v_x^2 - \frac12 m.
+    \f]
+    
+    Note that we could have obtained the final result by applying directly
+    formula \f$ \eqref{eq:eprop} \f$, even without knowing the true value
+    \f$ v_x = 0 \f$.
+    
+    Observation: an unbiased estimate of a positive quantity can yield negative
+    values.
+    
+    Conclusions
+    -----------
+    
+    We have introduced two different formulas \f$ \eqref{eq:mprop} \f$ and
+    \f$ \eqref{eq:eprop} \f$ for the propagation of the "mean" of a variable.
+    (We have not said what happens for higher moments, it turns out there
+    are no double versions of the formulae for higher moments.) Depending on
+    what you are doing, you have to pick one.
+    
+    If you have a variable of which you know the moments, and you want to
+    see how the moments change if you transform the variable, use formula
+    \f$ \eqref{eq:mprop} \f$.
+    
+    If you have an unbiased estimate of a quantity, and you want to obtain an
+    unbiased estimate of a trasformation of the quantity, use formula
+    \f$ \eqref{eq:eprop} \f$.
+    
+    These two choices are implemented in the template parameter `prop`: use
+    `UReal2<..., Prop::mean>` for \f$ \eqref{eq:mprop} \f$ and
+    `UReal2<..., Prop::est>` for \f$ \eqref{eq:eprop} \f$.
+    
+    Basics
+    ======
+    
+    The template parameter `Real` is the numerical type used, and is aliased to
+    the member type `real_type`; the parameter `prop` is the kind of propagation
+    to use, `Prop::mean` means moment propagation and `Prop::est` unbiased
+    estimate propagation.
+    
+    The aliases `UReal2E<Real>`, `UReal2M<Real>`, `udouble2e` and `udouble2m`
+    are provided for convenience.
+    
+    Initialization
+    --------------
+    
+    The simple way of initializing a variable is using one of the functions in
+    `distr.hpp`. Otherwise, you have to manually specify the first 8 central
+    moments.
+    
+    ~~~cpp
+    #include <uncertainties/ureal2.hpp>
+    #include <uncertainties/distr.hpp>
+    ...
+    namespace unc = uncertainties;
+    unc::udouble2e x(0, 1, {0, 3, 0, 15, 0, 105}); // normal distribution
+    // the first two numbers are mean and standard deviation
+    // the array of 6 numbers are the standardized central moments 3 to 8
+    x = unc::normal<unc::udouble2e>(0, 1); // the same
+    ~~~
+    
+    Accessing the moments
+    ---------------------
+    
+    The member functions `s`, `skew` and `kurt` compute the standard deviation,
+    the skewness and the kurtosis respectively. The member function `n` computes
+    the "mean", either in the sense of formula \f$ \eqref{eq:mprop} \f$ or
+    \f$ \eqref{eq:eprop} \f$ depending on the template parameter `prop`.
+    The member function `first_order_n` computes the mean to first order, like
+    `UReal` would do.
+    
+    The member function `m(n)` computes the `n`th central moment (non
+    standardized). `m(1)` computes the correction term that is used to get the
+    mean, but the sign is always as if `prop == Prop::mean`. So
+    `x.n() == x.first_order_n() + x.m(1)` if `prop == Prop::mean`, and
+    `x.n() == x.first_order_n() - x.m(1)` if `prop == Prop::est`.
+    
+    Printing
+    --------
+    
+    An `UReal2` can be formatted to string and output to a stream. You have to
+    include the header `io.hpp`.
+    
+    ~~~cpp
+    #include <uncertainties/io.hpp>
+    ...
+    unc::udouble2e x = unc::normal<unc::udouble2e>(13, 0.4);
+    std::cout << x << "\n"; // will print "13.0 ± 0.4"
+    std::cout << x.format(3) << "\n"; // "13.000 ± 0.400"
+    std::cout << format(x, 3) << "\n"; // the same
+    ~~~
+    
+    See the function `format` in `io.hpp` for details.
+    
+    Functions
+    ---------
+    
+    Standard mathematical functions are defined in `math.hpp`. User defined
+    functions can be created using the utilities in `functions.hpp`.
+    
+    Dependent vs independent variables
+    ==================================
+    
+    When a `UReal2` is initialized with mean and standard deviation, it is an
+    _independent variable_. Conversely, values obtained through operations on
+    `UReal2`s are _dependent variables_. Dependent variables store internally
+    information on all the independent variables that entered the computation.
+    The (in)dependency of a variable can be tested with the member function
+    `isindep`:
+    
+    ~~~cpp
+    unc::udouble2e x = unc::normal<unc::udouble2e>(1, 0.1);
+    bool ind = x.isindep(); // true
+    unc::udouble2e y = unc::normal<unc::udouble2e>(0.5, 0.2);
+    unc::udouble2e z = x + y;
+    ind = z.isindep(); // false
+    ~~~
+    
+    A value uniquely identifying an independent variable can be obtained with
+    `indepid`:
+    
+    ~~~cpp
+    unc::Id id = x.indepid(); // some value
+    id = y.indepid(); // a value different from the one of x
+    id = z.indepid(); // returns unc::invalid_id
+    ~~~
+    
+    The independent variable id is the same as for the class `UReal`. There will
+    not be an `UReal2` and a `UReal` with the same id.
+    
+    If a computation involves only one variable, the result still classifies as
+    independent, in particular a copy of an independent variable is still
+    independent:
+    
+    ~~~cpp
+    z = x + x;
+    id = z.isindep(); // true
+    y = x;
+    x.isindep(); // true
+    y.isindep(); // true
+    ~~~
+    
+    Implementing functions
+    ======================
+    
+    The header `math.hpp` defines standard mathematical functions on `UReal2`s.
+    Other functions can be easily added with the utilities in `functions.hpp`.
+    
+    If that is not sufficient, you can use directly the friend functions
+    `unary` and `binary`. They require you to compute manually the numbers
+    required.
+    
+    Example re-implementing sin:
+    
+    ~~~cpp
+    #include <cmath>
+    ...
+    unc::udouble2e usin(unc::udouble2e &x) {
+        double mean = sin(x.first_order_n());
+        double dsindx = cos(x.first_order_n());
+        double ddsindxdx = -sin(x.first_order_n());
+        // note: we use `first_order_n()`, not `n()`
+        return unary(x, mean, dsindx, ddsindxdx);
+    }
+    ~~~
+    
+    Example re-implementing multiplication:
+    
+    ~~~cpp
+    unc::udouble2e umult(unc::udouble2e &x, unc::udouble2e &y) {
+        double mean = x.first_order_n() * y.first_order_n();
+        double dmdx = y.first_order_n();
+        double dmdy = x.first_order_n();
+        double ddmdxdx = 0;
+        double ddmdydy = 0;
+        double ddmdxdy = 1;
+        return binary(x, y, mean, dmdx, dmdy, ddmdxdx, ddmdydy, ddmdxdy);
+    }
+    ~~~
     
     */
     template<typename Real, Prop prop>

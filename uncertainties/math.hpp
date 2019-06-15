@@ -528,15 +528,21 @@ namespace uncertainties {
         const Real cexx = erf_coeff * exp(-xn * xn);
         return unary(x, erfc(xn), -cexx, 2 * xn * cexx);
     }
+    /*!
+    \brief Are all the internal coefficients finite?
+    */
     template<typename Real, Prop prop>
     bool isfinite(const UReal2<Real, prop> &x) {
         using std::isfinite;
-        return isfinite(x.n()) and isfinite(x.s());
+        return x.all(x, [](const Real &n) { return isfinite(n); });
     }
+    /*!
+    \brief Are all the internal coefficients normal?
+    */
     template<typename Real, Prop prop>
     bool isnormal(const UReal2<Real, prop> &x) {
         using std::isnormal;
-        return isnormal(x.n()) and isnormal(x.s());
+        return x.all(x, [](const Real &n) { return isnormal(n); });
     }
 }
 

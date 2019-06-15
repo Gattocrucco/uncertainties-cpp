@@ -20,6 +20,24 @@
 #ifndef UNCERTAINTIES_DISTR_HPP_FC01FB72
 #define UNCERTAINTIES_DISTR_HPP_FC01FB72
 
+/*! \file
+\brief Distributions to initialize `UReal2` easily.
+
+The distributions are represented by functions with one template parameter that
+must be a specialization of `UReal2`. They just create an `UReal2` with the
+first eight moments of the specified distribution. All functions are in
+namespace `distr`. Example:
+
+~~~cpp
+#include <uncertainties/ureal2.hpp>
+#include <uncertainties/distr.hpp>
+...
+namespace unc = uncertainties;
+unc::udouble2e x = unc::distr::normal<unc::udouble2e>(0, 1);
+~~~
+
+*/
+
 #include <array>
 #include <cassert>
 #include <cmath>
@@ -72,7 +90,15 @@ namespace uncertainties {
         }
     }
     
+    /*!
+    \brief Namespace for the statistical distributions.
+    */
     namespace distr {
+        /*!
+        \brief Normal (gaussian) with mean `mu` and standard deviation `sigma`.
+        
+        \throw std::invalid_argument if `sigma < 0`.
+        */
         template<typename Number>
         Number normal(const typename Number::real_type &mu,
                       const typename Number::real_type &sigma) {
@@ -87,6 +113,11 @@ namespace uncertainties {
             return Number(mu, sigma, std_moments);
         }
         
+        /*!
+        \brief Chisquare with mean `k`.
+        
+        \throw std::invalid_argument if `k < 0`.
+        */
         template<typename Number>
         Number chisquare(const int k) {
             if (k < 0) {
@@ -112,7 +143,12 @@ namespace uncertainties {
             };
             return Number(K, sqrt2 * sqrtK, std_moments);
         }
-
+        
+        /*!
+        \brief Uniform distribution on the interval [`left`, `right`].
+        
+        \throw std::invalid_argument if `left > right`.
+        */
         template<typename Number>
         Number uniform(const typename Number::real_type &left,
                        const typename Number::real_type &right) {

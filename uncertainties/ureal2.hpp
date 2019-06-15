@@ -346,7 +346,7 @@ namespace uncertainties {
     unc::udouble2e x(0, 1, {0, 3, 0, 15, 0, 105}); // normal distribution
     // the first two numbers are mean and standard deviation
     // the array of 6 numbers are the standardized central moments 3 to 8
-    x = unc::normal<unc::udouble2e>(0, 1); // the same
+    x = unc::distr::normal<unc::udouble2e>(0, 1); // the same
     ~~~
     
     Accessing the moments
@@ -484,31 +484,33 @@ namespace uncertainties {
         std::array<Real, 4> mom {0, 0, 0, 0};
         std::array<bool, 4> mom_to_compute {false, false, false, false};
         
-        template<typename Predicate>
-        friend bool all(const UReal2<Real, prop> &x, Predicate p) {
-            if (not p(x.mu)) {
-                return false;
-            }
-            const ConstDiagIt dend = x.hg.cdend();
-            for (ConstDiagIt it = x.hg.cdbegin(); it != dend; ++it) {
-                const Diag &diag = it->second;
-                if (not p(diag.grad) or not p(diag.hhess)) {
-                    return false;
-                }
-            }
-            const ConstTriIt tend = x.hg.ctend();
-            for (ConstTriIt it = x.hg.ctbegin(true); it != tend; ++it) {
-                if (not p(*it)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        
     public:
+        /*!
+        \brief Numerical type used.
+        */
         using real_type = Real;
+        
+        /*!
+        \brief Propagation mode, `Prop::mean` or `Prop::est`.
+        */
         static constexpr Prop prop_mode = prop;
         
+        /*!
+        \brief Construct a variable given central moments.
+        
+        `n` is the mean. `moments` is the array of central moments from the
+        second to the eighth.
+        
+        Not all sequences of numbers are valid moments for a distribution. The
+        given moments are checked and an exception is thrown if they are not
+        valid. The checking is sensitive to floating point errors, so you can
+        set a threshold with `check_moments_threshold`. The default value of 0
+        is a safe choice. Since the checking is computationally expensive,
+        you can disable checking by setting `check_moments_threshold` to a
+        negative value.
+        
+        \throw std::invalid_argument if the moments are not valid.
+        */
         UReal2(const Real &n,
                const std::array<Real, 7> &moments,
                const Real &check_moments_threshold=0):
@@ -533,6 +535,14 @@ namespace uncertainties {
             std::copy(moments.begin(), moments.begin() + 3, this->mom.begin() + 1);
         }
         
+        /*!
+        \brief Construct a variable given standardized central moments.
+        
+        `n` is the mean, `s` the standard deviation and `std_moments` the
+        standardized central moments from third to eighth.
+        
+        \throw std::invalid_argument if `s < 0` or if the moments are not valid.
+        */
         UReal2(const Real &n, const Real &s,
                const std::array<Real, 6> &std_moments,
                const Real &check_moments_threshold=0):
@@ -558,19 +568,32 @@ namespace uncertainties {
             }
         }
         
-        UReal2(const Real &n):
+        /*!
+        \brief Construct a variable with mean `n` and all central moments 0.
+        */
+        inline UReal2(const Real &n) noexcept:
         mu {n} {
             ;
         }
-
-        UReal2() {
+        
+        /*!
+        \brief Construct a variable with all moments zero.
+        */
+        inline UReal2() noexcept {
             ;
         }
         
+        /*!
+        \brief Is the variable independent?
+        */
         inline bool isindep() const noexcept {
             return this->hg.size() <= 1;
         }
 
+        /*!
+        \brief Return the independent variable id, or `invalid_id` if it is not
+        independent.
+        */
         Id indepid() const noexcept {
             if (not this->isindep()) {
                 return invalid_id;
@@ -580,7 +603,13 @@ namespace uncertainties {
                 return 0;
             }
         }
-
+        
+        /*!
+        \brief Return the mean propagated to first order.
+        
+        It is the same result that would be computed by `UReal`, and is just
+        the result of the computation carried on with normal numbers.
+        */
         inline const Real &first_order_n() const noexcept {
             return this->mu;
         }
@@ -589,6 +618,10 @@ namespace uncertainties {
             return this->mu + internal::propsign(prop) * this->m(1);
         }
 
+        /*!
+        \brief Compute the mean if `prop == Prop::mean`, the unbiased estimate
+        if `prop == Prop::est`.
+        */
         Real n() const noexcept {
             return this->mu + internal::propsign(prop) * this->m(1);
         }
@@ -598,6 +631,9 @@ namespace uncertainties {
             return sqrt(this->m(2));
         }
 
+        /*!
+        \brief Compute the stadard deviation.
+        */
         Real s() const noexcept {
             using std::sqrt;
             return sqrt(this->m(2));
@@ -607,6 +643,9 @@ namespace uncertainties {
             return this->m(3) / (this->s() * this->m(2));
         }
         
+        /*!
+        \brief Compute the skewness.
+        */
         Real skew() const noexcept {
             return this->m(3) / (this->s() * this->m(2));
         }
@@ -616,6 +655,9 @@ namespace uncertainties {
             return this->m(4) / (s2 * s2);
         }
         
+        /*!
+        \brief Compute the kurtosis.
+        */
         Real kurt() const noexcept {
             const Real s2 = this->m(2);
             return this->m(4) / (s2 * s2);
@@ -632,6 +674,14 @@ namespace uncertainties {
             return this->mom[n - 1];
         }
         
+        /*!
+        \brief Compute the (non standardized) `n`th central moment.
+        
+        `n` must be 1, 2, 3, or 4. `m(1)` is actually the correction that
+        is applied to `first_order_n()` to obtain `n()`, in this way:
+        `x.n() == x.first_order_n() + x.m(1)` if `prop == Prop::mean`, and
+        `x.n() == x.first_order_n() - x.m(1)` if `prop == Prop::est`.
+        */
         Real m(const int n) const {
             assert(n >= 1 and n <= 4);
             if (this->mom_to_compute[n - 1]) {
@@ -649,6 +699,11 @@ namespace uncertainties {
             }
         }
 
+        /*!
+        \brief Format the variable to string.
+        
+        Just calls `format(*this, args...)`. See `format.hpp`.
+        */
         template<typename... Args>
         std::string format(Args &&... args) const {
             return uncertainties::format(*this, std::forward<Args>(args)...);
@@ -657,15 +712,23 @@ namespace uncertainties {
         template<typename OtherReal, Prop other_prop>
         friend class UReal2;
         
-        // explicit cast
+        /*!
+        \brief Explicit cast to `UReal2` with different numerical type and
+        propagation mode.
+        */
         template<typename AnyReal, Prop any_prop>
         explicit UReal2(const UReal2<AnyReal, any_prop> &x):
         hg {x.hg}, mu {static_cast<Real>(x.mu)}, mom_to_compute {x.mom_to_compute} {
             std::copy(x.mom.begin(), x.mom.end(), this->mom.begin());
         }
         
-        // implicit cast if prop is the same and there is safe cast
-        // OtherReal -> Real
+        /*!
+        \brief Implicit cast to `UReal2` with different numerical type and
+        same propagation mode.
+        
+        The implicit cast will work only if the implicit cast from `Real` to
+        `OtherReal` is safe.
+        */
         template<typename OtherReal>
         operator UReal2<OtherReal, prop>() const {
             UReal2<OtherReal, prop> x;
@@ -676,10 +739,16 @@ namespace uncertainties {
             return x;
         }
         
+        /*!
+        \brief Compute the variance.
+        */
         inline friend Real var(const UReal2<Real, prop> &x) noexcept {
             return x.m(2);
         }
         
+        /*!
+        \brief Compute the covariance.
+        */
         inline friend Real cov(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) noexcept {
             return internal::compute_c2(x.hg, y.hg) - x.m(1) * y.m(1);
         }
@@ -712,8 +781,14 @@ namespace uncertainties {
             }
         }
         
+        /*!
+        \brief Compute a one argument function.
+        
+        `fx`, `dfdx`, `ddfdxdx` must be respectively the function, its first
+        derivative and its second derivative computed at `x.first_order_n()`.
+        */
         friend UReal2<Real, prop> unary(
-            const UReal2<Real, prop>x,
+            const UReal2<Real, prop> &x,
             const Real &fx, const Real &dfdx, const Real &ddfdxdx
         ) {
             UReal2<Real, prop> result;
@@ -740,6 +815,13 @@ namespace uncertainties {
             return result;
         }        
         
+        /*!
+        \brief Compute a two argument function.
+        
+        `fxy`, `dfdx`, `dfdy`, `ddfdxdx`, `ddfdydy`, `ddfdxdy` must the
+        function, its first derivatives and its second derivatives computed at
+        `x.first_order_n()`, `y.first_order_n()`.
+        */
         friend UReal2<Real, prop> binary(
             const UReal2<Real, prop> &x, const UReal2<Real, prop> &y,
             const Real &fxy,
@@ -821,8 +903,9 @@ namespace uncertainties {
             return result;
         }
         
-        inline const UReal2<Real, prop> &operator+() const noexcept {
-            return *this;
+        friend inline const UReal2<Real, prop> &
+        operator+(const UReal2<Real, prop> &x) noexcept {
+            return x;
         }
         
         friend UReal2<Real, prop>
@@ -865,15 +948,26 @@ namespace uncertainties {
                           invy, -xn * invy2,
                           0, 2 * xn * invy2 * invy, -invy2);
         }
-        
-        friend inline bool isfinite(const UReal2<Real, prop> &x) noexcept {
-            using std::isfinite;
-            return all(x, [](const Real &n) { return isfinite(n); });
-        }
-        
-        friend inline bool isnormal(const UReal2<Real, prop> &x) noexcept {
-            using std::isnormal;
-            return all(x, [](const Real &n) { return isnormal(n); });
+
+        template<typename Predicate>
+        friend bool all(const UReal2<Real, prop> &x, Predicate p) {
+            if (not p(x.mu)) {
+                return false;
+            }
+            const ConstDiagIt dend = x.hg.cdend();
+            for (ConstDiagIt it = x.hg.cdbegin(); it != dend; ++it) {
+                const Diag &diag = it->second;
+                if (not p(diag.grad) or not p(diag.hhess)) {
+                    return false;
+                }
+            }
+            const ConstTriIt tend = x.hg.ctend();
+            for (ConstTriIt it = x.hg.ctbegin(true); it != tend; ++it) {
+                if (not p(*it)) {
+                    return false;
+                }
+            }
+            return true;
         }
     };
     
@@ -890,22 +984,28 @@ namespace uncertainties {
     using ufloat2m = UReal2M<float>;
     
     template<typename Real, Prop prop>
+    inline Real nom(UReal2<Real, prop> &x) noexcept {
+        return x.n();
+    }
+    
+    /*!
+    \brief Return `x.n()`.
+    */
+    template<typename Real, Prop prop>
     inline Real nom(const UReal2<Real, prop> &x) noexcept {
         return x.n();
     }
 
     template<typename Real, Prop prop>
-    inline Real nom(UReal2<Real, prop> &x) noexcept {
-        return x.n();
-    }
-    
-    template<typename Real, Prop prop>
-    inline Real sdev(const UReal2<Real, prop> &x) noexcept {
+    inline Real sdev(UReal2<Real, prop> &x) noexcept {
         return x.s();
     }
-
+    
+    /*!
+    \brief Return `x.s()`.
+    */
     template<typename Real, Prop prop>
-    inline Real sdev(UReal2<Real, prop> &x) noexcept {
+    inline Real sdev(const UReal2<Real, prop> &x) noexcept {
         return x.s();
     }
 

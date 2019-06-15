@@ -48,6 +48,9 @@ namespace uncertainties {
     template<typename Real>
     class UReal;
     
+    /*!
+    \brief Propagation mode, see `UReal2` description.
+    */
     enum class Prop {
         est,
         mean
@@ -73,11 +76,11 @@ namespace uncertainties {
     }
     
     /*!
-    \brief Convert an `UReal` to a human-readable string.
+    \brief Convert an `UReal` or `UReal2` to a human-readable string.
     
     `x` can actually be any type, provided `nom` and `sdev` are defined for it.
     (They are already overloaded by uncertainties to return respectively the
-    value itself and 0 if the type is not `UReal`.)
+    value itself and 0 if the type is not `UReal` or `UReal2`.)
     
     The argument `errdig` is the number of significative digits of the
     uncertainty. The number of significative digits of the mean is chosen to

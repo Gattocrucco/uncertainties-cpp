@@ -41,6 +41,8 @@ to compute the standard deviation?
 
 ## UReal2
 
+`corr`
+
 Remove moment caching altogether?
 
 Rescale internally standardized moments such that the 8th std moment of a
@@ -55,10 +57,8 @@ Check that `ureals` works with `UReal2`.
 
 Make grad and hess publicly usable.
 
-Write doc.
-
-Third and fourth order correlation functions (automatical generation). First do it with non optimized iterations. Can I compute correlation functions using the mean correction of expressions?
-=> No, example: E[xxx] = 0 if xxx is computed with UReal2
+Third and fourth order correlation functions (automatical generation). Do it
+first storing all coefficients in arrays then iterating.
 
 Check higher order correlation functions using relations with lower order
 correlations if there are identical arguments.

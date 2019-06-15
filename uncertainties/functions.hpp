@@ -21,14 +21,14 @@
 #define UNCERTAINTIES_FUNCTIONS_HPP_7FF782C8
 
 /*! \file
-\brief Factories to create functions taking `UReal`s as input.
+\brief Factories to create functions taking `UReal`s or `UReal2`s as input.
 
-To propagate the uncertainty, the derivative of the function is needed.
-The functions in this file pack together a function and its derivative(s) in
-the appropriate way, or take only the function and compute the derivative
+To propagate the uncertainty, the derivatives of the function are needed.
+The functions in this file pack together a function and its derivatives in
+the appropriate way, or take only the function and compute the derivatives
 themselves.
 
-Example re-implementing `sin` with explicit derivative:
+Example re-implementing `sin` for `UReal` with explicit derivative:
 
 ~~~cpp
 #include <cmath>
@@ -118,7 +118,7 @@ namespace uncertainties {
     }
     
     /*!
-    \brief Default step for forward difference derivatives.
+    \brief Default step for numerical derivatives of order `order`.
     */
     template<typename Real>
     Real default_step(const int order=1) {
@@ -134,7 +134,7 @@ namespace uncertainties {
     difference with step `step`:
     
     \f{align*}{
-    f'(x) &= \frac {f(x + \mathrm{step}) - f(x)} {\mathrm{step}}
+    f'(x) &= \frac {f(x + \mathrm{step}) - f(x)} {\mathrm{step}} + O(\mathrm{step})
     \f}
     */
     template<typename Real>
@@ -158,9 +158,9 @@ namespace uncertainties {
     
     \f{align*}{
     \frac {\partial f} {\partial x} (x, y)
-    &= \frac {f(x + \mathrm{step}, y) - f(x, y)} {\mathrm{step}} \\
+    &= \frac {f(x + \mathrm{step}, y) - f(x, y)} {\mathrm{step}} + O(\mathrm{step}) \\
     \frac {\partial f} {\partial y} (x, y)
-    &= \frac {f(x, y + \mathrm{step}) - f(x, y)} {\mathrm{step}}
+    &= \frac {f(x, y + \mathrm{step}) - f(x, y)} {\mathrm{step}} + O(\mathrm{step})
     \f}
     */
     template<typename Real>
@@ -178,8 +178,6 @@ namespace uncertainties {
         };
     }
 
-
-
     /*!
     \brief Type of a function object taking one `UReal2` and returning `UReal2`.
     */
@@ -196,6 +194,9 @@ namespace uncertainties {
     
     /*!
     \brief Construct a function on `UReal2`s of one argument.
+    
+    `f`, `dfdx`, `ddfdxdx` must be respectively the function, its first
+    derivative and its second derivative.
     */
     template<typename Real, Prop prop>
     UUnary2<Real, prop> uunary2(const Unary<Real> &f,
@@ -229,11 +230,11 @@ namespace uncertainties {
     /*!
     \brief Construct a function on `UReal2`s of one argument.
     
-    `f` is the function to compute. The derivative is computed with a forward
-    difference with step `step`:
+    `f` and `dfdx` must be the function and its first derivative. The second
+    derivative is computed with a forward difference with step `step`:
     
     \f{align*}{
-    f'(x) &= \frac {f(x + \mathrm{step}) - f(x)} {\mathrm{step}}
+    f''(x) &= \frac {f'(x + \mathrm{step}) - f'(x)} {\mathrm{step}} + O(\mathrm{step})
     \f}
     */
     template<typename Real, Prop prop>
@@ -252,11 +253,13 @@ namespace uncertainties {
     /*!
     \brief Construct a function on `UReal2`s of one argument.
     
-    `f` is the function to compute. The derivative is computed with a forward
-    difference with step `step`:
+    `f` is the function to compute. The first and second derivatives are
+    computed with central differences with step `step`:
     
     \f{align*}{
-    f'(x) &= \frac {f(x + \mathrm{step}) - f(x)} {\mathrm{step}}
+    f'(x) &= \frac {f(x + \mathrm{step}) - f(x - \mathrm{step})} {2 \mathrm{step}} + O(\mathrm{step}^2) \\
+    f''(x) &= \frac
+    {f(x + \mathrm{step}) + f(x - \mathrm{step}) - 2 f(x)} {\mathrm{step}^2} + O(\mathrm{step}^2)
     \f}
     */
     template<typename Real, Prop prop>
@@ -277,14 +280,16 @@ namespace uncertainties {
     /*!
     \brief Construct a function on `UReal2`s of two arguments.
     
-    `f` is the function to compute. The derivatives are computed with a forward
-    difference with step `step`:
+    `f`, `dfdx` and `dfdy` are the function and its first derivatives. The
+    second derivatives are computed with a forward difference with step `step`:
     
     \f{align*}{
-    \frac {\partial f} {\partial x} (x, y)
-    &= \frac {f(x + \mathrm{step}, y) - f(x, y)} {\mathrm{step}} \\
-    \frac {\partial f} {\partial y} (x, y)
-    &= \frac {f(x, y + \mathrm{step}) - f(x, y)} {\mathrm{step}}
+    \frac {\partial^2 f} {\partial x^2} (x, y)
+    &= \frac {\partial_x f(x + \mathrm{step}, y) - \partial_x f(x, y)} {\mathrm{step}} + O(\mathrm{step}) \\
+    \frac {\partial^2 f} {\partial y^2} (x, y)
+    &= \frac {\partial_y f(x, y + \mathrm{step}) - \partial_y f(x, y)} {\mathrm{step}} + O(\mathrm{step}) \\
+    \frac {\partial^2 f} {\partial x\partial y} (x, y)
+    &= \frac {\partial_x f(x, y + \mathrm{step}) - \partial_x f(x, y)} {\mathrm{step}} + O(\mathrm{step})
     \f}
     */
     template<typename Real, Prop prop>
@@ -310,14 +315,24 @@ namespace uncertainties {
     /*!
     \brief Construct a function on `UReal2`s of two arguments.
     
-    `f` is the function to compute. The derivatives are computed with a forward
-    difference with step `step`:
+    `f` is the function to compute. The derivatives are computed with central
+    differences with step `step`:
     
     \f{align*}{
-    \frac {\partial f} {\partial x} (x, y)
-    &= \frac {f(x + \mathrm{step}, y) - f(x, y)} {\mathrm{step}} \\
-    \frac {\partial f} {\partial y} (x, y)
-    &= \frac {f(x, y + \mathrm{step}) - f(x, y)} {\mathrm{step}}
+    s &= \mathtt{step} \\
+    F_{00} &= f(x) \\
+    F_{\pm\pm} &= f(x \pm s, y \pm s) \\
+    \frac {\partial f} {\partial x} &= \frac {F_{+0} - F_{-0}} {2 s} + O(s^2) \\
+    \frac {\partial f} {\partial y} &= \frac {F_{0+} - F_{0-}} {2 s} + O(s^2) \\
+    
+    \frac {\partial^2 f} {\partial x^2}
+    &= \frac {F_{+0} + F_{-0} - 2 F_{00}} {s^2} + O(s^2) \\
+    
+    \frac {\partial^2 f} {\partial y^2}
+    &= \frac {F_{0+} + F_{0-} - 2 F_{00}} {s^2} + O(s^2) \\
+    
+    \frac {\partial^2 f} {\partial x \partial y}
+    &= \frac {F_{++} + F_{--} - (F_{+0} + F_{-0} + F_{0+} + F_{0-}) + 2 F_{00}} {2 s^2} + O(s^2)
     \f}
     */
     template<typename Real, Prop prop>

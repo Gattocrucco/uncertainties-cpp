@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 import progressbar
 import uncertainties
 
-M = 1000 # number of monte carlo
+M = 2 # number of monte carlo
 N = 2 # number of parameters
 def mu(x, p):
     return p[0] * np.cos(x / p[1])
@@ -18,13 +18,17 @@ estimates = np.empty((N, M))
 biases = np.empty((N, M))
 covs = np.empty((N, N, M))
 
-def res(p, data_y):
-    return data_y - mu(true_x, p)
+def res(p, data):
+    par = p[:N]
+    x = p[N:]
+    data_x = data[:len(data) // 2]
+    data_y = data[len(data) // 2:]
+    return np.concatenate([data_y - mu(x, par), data_x - x])
 
 jac = autograd.jacobian(res, 0)
 
-def Q(p, data_y):
-    r = res(p, data_y)
+def Q(p, data):
+    r = res(p, data)
     return np.sum(r ** 2)
 
 f = autograd.jacobian(Q, 0)
@@ -34,18 +38,21 @@ dfdpdy = autograd.jacobian(dfdp, 1)
 dfdpdp = autograd.jacobian(dfdp, 0)
 
 for i in progressbar.progressbar(range(M)):
+    data_x = true_x + np.random.randn(len(true_x))
     data_y = mu(true_x, true_par) + np.random.randn(len(true_x))
+    data = np.concatenate([data_x, data_y])
 
-    result = optimize.least_squares(res, true_par, jac=jac, args=(data_y,))
+    p0 = np.concatenate([true_par, true_x])
+    result = optimize.least_squares(res, p0, jac=jac, args=(data,))
     assert(result.success)
     
-    dfdy_ = dfdy(result.x, data_y)
-    dfdp_ = dfdp(result.x, data_y)
-    dfdpdy_ = dfdpdy(result.x, data_y)
-    dfdpdp_ = dfdpdp(result.x, data_y)
+    dfdy_ = dfdy(result.x, data)
+    dfdp_ = dfdp(result.x, data)
+    dfdpdy_ = dfdpdy(result.x, data)
+    dfdpdp_ = dfdpdp(result.x, data)
     
     grad = np.linalg.solve(dfdp_, -dfdy_)
-    assert(grad.shape == (N, len(true_x)))
+    assert(grad.shape == (N + len(true_x), 2 * len(true_x)))
     
     cov = np.einsum('ai,bi->ab', grad, grad)
     assert(np.allclose(cov, cov.T))
@@ -55,17 +62,17 @@ for i in progressbar.progressbar(range(M)):
         - np.einsum('abi,bj->aji', dfdpdy_, grad)
         - np.einsum('abg,bi,gj->aij', dfdpdp_, grad, grad)
     )
-    assert(B.shape == (N, len(true_x), len(true_x)))
-    B_ = B.reshape(N, len(true_x) * len(true_x))
+    assert(B.shape == (N + len(true_x), 2 * len(true_x), 2 * len(true_x)))
+    B_ = B.reshape(N + len(true_x), 4 * len(true_x) * len(true_x))
 
-    hess = np.linalg.solve(dfdp_, B_).reshape(N, len(true_x), len(true_x))
+    hess = np.linalg.solve(dfdp_, B_).reshape(N + len(true_x), 2 * len(true_x), 2 * len(true_x))
     assert(np.allclose(hess, np.einsum('aji', hess)))
 
     bias = 1/2 * np.einsum('aii', hess)
     
-    estimates[:, i] = result.x
-    biases[:, i] = bias
-    covs[..., i] = cov
+    estimates[:, i] = result.x[:N]
+    biases[:, i] = bias[:N]
+    covs[..., i] = cov[:N, :N]
 
 sigmas = np.sqrt(np.einsum('iim->im', covs))
 

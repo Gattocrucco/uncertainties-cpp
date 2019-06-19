@@ -16,21 +16,17 @@ Check if `UReal` works as user type to Eigen.
 
 Python interface. (Standard C extension compiled with specific types?)
 
-Use cholesky in `ureals`.
-
 Find a C++ template library for complex numbers with arbitrary numerical type
 (maybe in Boost?) (std::complex need to be defined only for builtin types) and
 check UReal(2) works with that.
 
-Remove specializations with `float` since probably it suffers from precision
-problems. (Or not?)
-
 Use the `UNCERTAINTIES_EXTERN_*` macros in all headers.
+
+Optimize `UReal2::binary` and `UReal::binary`.
 
 ## UReal
 
-Maybe allow higher moments with first order propagation? They are trivial, for example symmetric distributions will never produce asymmetries, but in general they may be useful
-=> No because it changes too much UReal.
+Use cholesky in `ureals`.
 
 Add grad member function to compute derivatives.
 
@@ -41,32 +37,24 @@ to compute the standard deviation?
 
 ## UReal2
 
-Test udouble2e with monte carlo. Eventually understand how to correct the
-bias of higher order moments.
+Allow first order propagation for all moments with function `first_order_m()`.
+
+Implement bias correction for higher order moments.
 
 `corr`
 
 Remove moment caching altogether?
 
-Rescale internally standardized moments such that the 8th std moment of a
-normal distribution is 1, this should increase numerical stability. The
-rescaling should have few digits if written in base 2. The scaling can be
-inverted just before returning from `UReal::m()`. => No because the sigma is in
-the gradient and hessian and having different sigmas around will make the change
-ineffective.
-
-Check that `ureals` works with `UReal2`.
-=> It will not by design, higher order moments must be specified.
+Design a version of `ureals` for `UReal2`. Linear transformation? Same
+standardized moments for all variables?
 
 Make grad and hess publicly usable.
 
 Third and fourth order correlation functions (automatical generation). Do it
-first storing all coefficients in arrays then iterating.
+first storing all ids and coefficients in arrays then iterating.
 
 Check higher order correlation functions using relations with lower order
 correlations if there are identical arguments.
-
-Optimize `UReal2::binary` and `UReal::binary`.
 
 Implement `UReal2::binary_assign`.
 

@@ -179,7 +179,7 @@ namespace uncertainties {
     We can go on to arbitrary moments and also generalize to the case of many
     variables (\f$ y = f(x_1, x_2, \ldots) \f$), but the reader is probably
     already bored enough. These computations will be all carried on by the code
-    under the hood. Just remember the following things.
+    under the hood. Just remember the following two things.
     
     First thing: let's write the formula for the mean of \f$ y \f$ by
     translating back everything:
@@ -302,14 +302,15 @@ namespace uncertainties {
     Conclusions
     -----------
     
-    We have introduced two different formulas \f$ \eqref{eq:mprop} \f$ and
-    \f$ \eqref{eq:eprop} \f$ for the propagation of the "mean" of a variable.
-    (We have not said what happens for higher moments, it turns out there
-    are no double versions of the formulae for higher moments.) Depending on
-    what you are doing, you have to pick one.
+    We have introduced two different formulas \f$ \eqref{eq:mprop} \f$ and \f$
+    \eqref{eq:eprop} \f$ for the propagation of the "mean" of a variable. (We
+    have not said what happens for __higher moments__: currently __only the
+    formulae for moment propagation__ and not those for unbiased moment
+    estimation __are implemented__.) Depending on what you are doing, you have
+    to pick one.
     
     If you have a variable of which you know the moments, and you want to
-    see how the moments change if you transform the variable, use formula
+    see how the mean changes if you transform the variable, use formula
     \f$ \eqref{eq:mprop} \f$.
     
     If you have an unbiased estimate of a quantity, and you want to obtain an

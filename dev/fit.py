@@ -1,22 +1,29 @@
 from scipy import optimize
 import autograd
 from autograd import numpy as np
-from matplotlib import pyplot as plt
+from numpy.lib import format as nplf
 import progressbar
-import uncertainties
 
-M = 2 # number of monte carlo
+M = 100 # number of monte carlo
 N = 2 # number of parameters
 def mu(x, p):
     return p[0] * np.cos(x / p[1])
-true_x = np.linspace(0, 30, 10)
-true_par = np.array([10, 4])
+true_x = np.linspace(0, 20, 10)
+true_par = np.array([10, 3])
 
 ##########################################################
 
-estimates = np.empty((N, M))
-biases = np.empty((N, M))
-covs = np.empty((N, N, M))
+table = nplf.open_memmap('fit.npy', mode='w+', shape=(M,), dtype=[
+    ('success', bool),
+    ('estimate', float, N),
+    ('bias', float, N),
+    ('cov', float, (N, N)),
+    ('data_y', float, len(true_x)),
+    ('data_x', float, len(true_x)),
+    ('complete_estimate', float, N + len(true_x)),
+    ('complete_bias', float, N + len(true_x)),
+    ('complete_cov', float, (N + len(true_x), N + len(true_x)))
+])
 
 def res(p, data):
     par = p[:N]
@@ -44,7 +51,10 @@ for i in progressbar.progressbar(range(M)):
 
     p0 = np.concatenate([true_par, true_x])
     result = optimize.least_squares(res, p0, jac=jac, args=(data,))
-    assert(result.success)
+    table[i]['success'] = result.success
+    if not result.success:
+        print(f'minimization failed for i = {i}')
+        continue
     
     dfdy_ = dfdy(result.x, data)
     dfdp_ = dfdp(result.x, data)
@@ -70,46 +80,15 @@ for i in progressbar.progressbar(range(M)):
 
     bias = 1/2 * np.einsum('aii', hess)
     
-    estimates[:, i] = result.x[:N]
-    biases[:, i] = bias[:N]
-    covs[..., i] = cov[:N, :N]
+    table[i]['estimate'] = result.x[:N]
+    table[i]['bias'] = bias[:N]
+    table[i]['cov'] = cov[:N, :N]
+    table[i]['data_y'] = data_y
+    table[i]['data_x'] = data_x
+    table[i]['complete_estimate'] = result.x
+    table[i]['complete_bias'] = bias
+    table[i]['complete_cov'] = cov
 
-sigmas = np.sqrt(np.einsum('iim->im', covs))
+table.flush()
 
-fig = plt.figure('fit')
-fig.clf()
-axs = fig.subplots(N, N)
-
-def ms(s):
-    return uncertainties.ufloat(np.mean(s), np.std(s) / np.sqrt(len(s)))
-
-for i in range(N):
-    ax = axs[i][i]
-    
-    noncorr = estimates[i]
-    corr = estimates[i] - np.where(np.abs(biases[i]) < sigmas[i], biases[i], 0)
-    ax.hist(
-        noncorr, bins='auto', histtype='step',
-        label='not corrected\nbias = {}'.format(ms(noncorr - true_par[i]))
-    )
-    ax.hist(
-        corr, bins='auto', histtype='step',
-        label='corrected\nbias = {}'.format(ms(corr - true_par[i]))
-    )
-    ax.plot(2 * [true_par[i]], ax.get_ylim(), scaley=False, label='true')
-    ax.legend(loc='best', fontsize='small')
-
-for i in range(N):
-    for j in range(i + 1, N):
-        ax = axs[i][j]
-        
-        ok = np.abs(biases[i]) < sigmas[i]
-        ok &= np.abs(biases[j]) < sigmas[j]
-        
-        ax.plot((estimates[i] - biases[i])[ok], (estimates[j] - biases[j])[ok], 'x', label='corrected')
-        ax.plot((estimates[i] - biases[i])[~ok], (estimates[j] - biases[j])[~ok], 'x', color='red')
-        ax.plot(estimates[i][ok], estimates[j][ok], '.', markersize=2, label='not corrected')
-        ax.plot(estimates[i][~ok], estimates[j][~ok], '.', markersize=2, color='red')
-        ax.legend(loc='best', fontsize='small')
-
-fig.show()
+np.savez('fit-info.npz', true_x=true_x, true_par=true_par)

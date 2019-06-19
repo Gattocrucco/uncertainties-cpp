@@ -4,7 +4,7 @@ from autograd import numpy as np
 from numpy.lib import format as nplf
 import progressbar
 
-M = 100 # number of monte carlo
+M = 1000 # number of monte carlo
 N = 2 # number of parameters
 def mu(x, p):
     return p[0] * np.cos(x / p[1])
@@ -23,8 +23,6 @@ table = nplf.open_memmap('fit.npy', mode='w+', shape=(M,), dtype=[
     ('complete_estimate', float, N + len(true_x)),
     ('complete_bias', float, N + len(true_x)),
     ('complete_cov', float, (N + len(true_x), N + len(true_x))),
-    ('alt_bias', float, N),
-    ('has_alt_bias', bool)
 ])
 
 def res(p, data):
@@ -85,22 +83,6 @@ for i in progressbar.progressbar(range(M)):
 
     bias = 1/2 * np.einsum('aii', hess)
     
-    data1 = np.concatenate([data_x[::2], data_y[::2]])
-    p01 = np.concatenate([true_par, true_x[::2]])
-    result1 = optimize.least_squares(res, p01, jac=jac, args=(data1,))
-    
-    data2 = np.concatenate([data_x[1::2], data_y[1::2]])
-    p02 = np.concatenate([true_par, true_x[1::2]])
-    result2 = optimize.least_squares(res, p02, jac=jac, args=(data2,))
-    
-    if result1.success and result2.success:
-        table[i]['alt_bias'] = 0.5 * (result1.x[:N] + result2.x[:N]) - result.x[:N]
-        table[i]['has_alt_bias'] = True
-    else:
-        table[i]['alt_bias'] = 0
-        table[i]['has_alt_bias'] = False
-        print(f'alt bias fit failed for i = {i}')
-
     table[i]['estimate'] = result.x[:N]
     table[i]['bias'] = bias[:N]
     table[i]['cov'] = cov[:N, :N]

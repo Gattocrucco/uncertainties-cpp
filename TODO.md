@@ -41,6 +41,9 @@ to compute the standard deviation?
 
 ## UReal2
 
+Test udouble2e with monte carlo. Eventually understand how to correct the
+bias of higher order moments.
+
 `corr`
 
 Remove moment caching altogether?

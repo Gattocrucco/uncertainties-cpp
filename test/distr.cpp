@@ -278,7 +278,7 @@ int main() {
     assert(close(sm[0], 1.0));
     
     // center moments around mean
-    std::array<type, 9> cm;
+    std::array<type, 5> cm;
     for (int n = 0; n < cm.size(); ++n) {
         cm[n] = 0;
         for (int k = 0; k <= n; ++k) {

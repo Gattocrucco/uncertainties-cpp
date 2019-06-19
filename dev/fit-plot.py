@@ -19,7 +19,6 @@ def ms(s):
 
 estimates = table['estimate'].T
 biases = table['bias'].T
-altbiases = table['alt_bias'].T
 covs = table['cov'].T
 sigmas = np.sqrt(np.einsum('iim->im', covs))
 
@@ -27,25 +26,15 @@ ok = True
 for i in range(N):
     ok &= np.abs(biases[i]) < SIGMA_FACTOR * sigmas[i]
 
-altok = True
-for i in range(N):
-    altok &= np.abs(altbiases[i]) < SIGMA_FACTOR * sigmas[i]
-
 for i in range(N):
     ax = axs[i][i]
     
     noncorr = estimates[i]
     corr = estimates[i] - np.where(ok, biases[i], 0)
-    altcorr = estimates[i] - np.where(altok, altbiases[i], 0)
     ax.hist(
         noncorr, bins='auto', histtype='stepfilled',
         label='not corrected\n(bias = {})'.format(ms(noncorr - true_par[i])),
         color='lightgray', zorder=0, density=True
-    )
-    ax.hist(
-        altcorr, bins='auto', histtype='step',
-        label='reference correction\n(bias = {})'.format(ms(altcorr - true_par[i])),
-        color='black', linestyle='--', zorder=1, density=True
     )
     ax.hist(
         corr, bins='auto', histtype='step',

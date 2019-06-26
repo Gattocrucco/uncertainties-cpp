@@ -713,29 +713,57 @@ namespace uncertainties {
             return cov(x, y) / (x.s() * y.s());
         }
         
-        Real _grad(const UReal2<Real, prop> &x) const {
-            assert(x.hg.size() == 1);
+        /*!
+        \brief Compute the first derivative with respect to `x`.
+        
+        \throw std::invalid_argument if `x` is not independent or if `x` does
+        not contain uncertainty information, which happens if `x` is the
+        result of the default constructor or the one-argument constructor.
+        */
+        Real grad(const UReal2<Real, prop> &x) const {
+            if (x.hg.size() != 1) {
+                std::ostringstream ss;
+                ss << "uncertainties::UReal2::grad: ";
+                ss << "variable is not independent and nontrivial";
+                throw std::invalid_argument(ss.str());
+            }
             const ConstDiagIt it = x.hg.cdbegin();
             return this->hg.diag_get(it->first).grad / it->second.grad;
         }
         
-        Real _hess(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) const {
-            assert(x.hg.size() == 1);
-            assert(y.hg.size() == 1);
+        /*!
+        \brief Compute the second derivative with respect to `x`, `y`.
+        
+        \throw std::invalid_argument if `x` or `y` are not independent or do not
+        have uncertainty information, or if `x` and `y` originate from the same
+        independent variable but with different dependency.
+        */
+        Real hess(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) const {
+            if (x.hg.size() != 1 or y.hg.size() != 1) {
+                std::ostringstream ss;
+                ss << "uncertainties::UReal2::hess: ";
+                ss << "variables are not independent and nontrivial";
+                throw std::invalid_argument(ss.str());
+            }
             const Id idx = x.hg.cdbegin()->first;
             const Id idy = y.hg.cdbegin()->first;
             if (idx != idy) {
-                const Real xgrad = x.hg.cdbegin()->second.grad;
-                const Real ygrad = y.hg.cdbegin()->second.grad;
+                const Real &xgrad = x.hg.cdbegin()->second.grad;
+                const Real &ygrad = y.hg.cdbegin()->second.grad;
                 return 2 * this->hg.hhess_get(idx, idy) / (xgrad * ygrad);
             } else {
                 const Id id = idx;
-                const Real dxdv = x.hg.cdbegin()->second.grad;
-                const Real dydv = y.hg.cdbegin()->second.grad;
+                const Real &dxdv = x.hg.cdbegin()->second.grad;
+                const Real &dydv = y.hg.cdbegin()->second.grad;
                 const Real ddxdvdv = 2 * x.hg.cdbegin()->second.hhess;
                 const Real ddydvdv = 2 * y.hg.cdbegin()->second.hhess;
-                assert(dxdv == dydv and ddxdvdv == ddydvdv);
-                const Real dfdv = this->hg.diag_get(id).grad;
+                if (dxdv != dydv or ddxdvdv != ddydvdv) {
+                    std::ostringstream ss;
+                    ss << "uncertainties::UReal2::hess: ";
+                    ss << "variables have different dependency on the same id";
+                    throw std::invalid_argument(ss.str());
+                }
+                const Real &dfdv = this->hg.diag_get(id).grad;
                 const Real ddfdvdv = 2 * this->hg.hhess_get(id, id);
                 return (ddfdvdv - (dfdv / dxdv) * ddxdvdv) / (dxdv * dxdv);
             }

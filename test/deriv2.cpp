@@ -19,7 +19,7 @@ template<typename Real, unc::Prop prop>
 void checkgrad(const unc::UReal2<Real, prop> &f,
                const unc::UReal2<Real, prop> &x,
                const Real &g) {
-    const Real grad = f._grad(x);
+    const Real grad = f.grad(x);
     if (not close(g, grad)) {
         std::ostringstream s;
         s << "expected df/dx = " << g << ", got " << grad;
@@ -33,7 +33,7 @@ void checkhess(const unc::UReal2<Real, prop> &f,
                const unc::UReal2<Real, prop> &x,
                const unc::UReal2<Real, prop> &y,
                const Real &h) {
-    const Real hess = f._hess(x, y);
+    const Real hess = f.hess(x, y);
     if (not close(h, hess)) {
         std::ostringstream s;
         s << "expected ddf/dxdy = " << h << ", got " << hess;

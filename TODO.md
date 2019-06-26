@@ -42,12 +42,8 @@ Allow first order propagation for all moments with function `first_order_m()`.
 
 Implement bias correction for higher order moments.
 
-`corr`
-
 Design a version of `ureals` for `UReal2`. Linear transformation? Same
 standardized moments for all variables?
-
-Make grad and hess publicly usable.
 
 Third and fourth order correlation functions (automatical generation). Do it
 first storing all ids and coefficients in arrays then iterating.

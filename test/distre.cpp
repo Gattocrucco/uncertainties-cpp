@@ -161,7 +161,7 @@ int main() {
         chi2.emplace_back(ks[i]);
     }
     
-    constexpr int nsamples = 100000;
+    constexpr int nsamples = 10000;
     for (int i = 0; i < nsamples; ++i) {
         etype er;
         for (int j = 0; j < ks.size(); ++j) {

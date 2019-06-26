@@ -70,7 +70,6 @@ namespace uncertainties {
                 m += 2 * (d1.hhess * d2.hhess + 2 * hhess * hhess); // B2, B1
             }
             
-            assert(m >= 0);
             return m;
         }
 
@@ -173,6 +172,7 @@ namespace uncertainties {
                     m += 6 * 8 * hhess * hhess2 * hhess3; // E1
                 }
             }
+            
             return m;
         }
         
@@ -454,7 +454,6 @@ namespace uncertainties {
                 }
             } // END CYCLE E
             
-            assert(m >= 0);
             return m;
         }
 
@@ -462,15 +461,15 @@ namespace uncertainties {
         Real compute_mom(const HessGrad<Real> &hg, const int n) {
             assert(n >= 1 and n <= 4);
             switch (n) {
-                case 1:
+            case 1:
                 return compute_m1(hg);
-                case 2:
+            case 2:
                 return compute_m2(hg);
-                case 3:
+            case 3:
                 return compute_m3(hg);
-                case 4:
+            case 4:
                 return compute_m4(hg);
-                default:
+            default:
                 return 0;
             }
         }

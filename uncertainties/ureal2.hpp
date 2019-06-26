@@ -375,7 +375,7 @@ namespace uncertainties {
     ~~~cpp
     #include <uncertainties/io.hpp>
     ...
-    unc::udouble2e x = unc::normal<unc::udouble2e>(13, 0.4);
+    unc::udouble2e x = unc::distr::normal<unc::udouble2e>(13, 0.4);
     std::cout << x << "\n"; // will print "13.0 ± 0.4"
     std::cout << x.format(3) << "\n"; // "13.000 ± 0.400"
     std::cout << format(x, 3) << "\n"; // the same
@@ -400,9 +400,9 @@ namespace uncertainties {
     `isindep`:
     
     ~~~cpp
-    unc::udouble2e x = unc::normal<unc::udouble2e>(1, 0.1);
+    unc::udouble2e x = unc::distr::normal<unc::udouble2e>(1, 0.1);
     bool ind = x.isindep(); // true
-    unc::udouble2e y = unc::normal<unc::udouble2e>(0.5, 0.2);
+    unc::udouble2e y = unc::distr::normal<unc::udouble2e>(0.5, 0.2);
     unc::udouble2e z = x + y;
     ind = z.isindep(); // false
     ~~~
@@ -482,9 +482,7 @@ namespace uncertainties {
         // variables
         HessGrad hg;
         Real mu {0};
-        std::array<Real, 4> mom {0, 0, 0, 0};
-        std::array<bool, 4> mom_to_compute {false, false, false, false};
-        
+
     public:
         /*!
         \brief Numerical type used.
@@ -533,7 +531,6 @@ namespace uncertainties {
             } else {
                 std::fill(diag.mom.begin(), diag.mom.end(), 0);
             }
-            std::copy(moments.begin(), moments.begin() + 3, this->mom.begin() + 1);
         }
         
         /*!
@@ -561,12 +558,6 @@ namespace uncertainties {
             diag.grad = s;
             diag.hhess = 0;
             diag.mom = internal::Moments<Real>(std_moments);
-            Real sn = s * s;
-            this->mom[1] = sn;
-            for (int i = 2; i < 4; ++i) {
-                sn *= s;
-                this->mom[i] = std_moments[i - 2] * sn;
-            }
         }
         
         /*!
@@ -615,10 +606,6 @@ namespace uncertainties {
             return this->mu;
         }
         
-        Real n() noexcept  {
-            return this->mu + internal::propsign(prop) * this->m(1);
-        }
-
         /*!
         \brief Compute the mean if `prop == Prop::mean`, the unbiased estimate
         if `prop == Prop::est`.
@@ -627,21 +614,12 @@ namespace uncertainties {
             return this->mu + internal::propsign(prop) * this->m(1);
         }
         
-        Real s() noexcept {
-            using std::sqrt;
-            return sqrt(this->m(2));
-        }
-
         /*!
         \brief Compute the stadard deviation.
         */
         Real s() const noexcept {
             using std::sqrt;
             return sqrt(this->m(2));
-        }
-        
-        Real skew() noexcept {
-            return this->m(3) / (this->s() * this->m(2));
         }
         
         /*!
@@ -651,28 +629,12 @@ namespace uncertainties {
             return this->m(3) / (this->s() * this->m(2));
         }
         
-        Real kurt() noexcept {
-            const Real &s2 = this->m(2);
-            return this->m(4) / (s2 * s2);
-        }
-        
         /*!
         \brief Compute the kurtosis.
         */
         Real kurt() const noexcept {
             const Real s2 = this->m(2);
             return this->m(4) / (s2 * s2);
-        }
-        
-        const Real &m(const int n) {
-            assert(n >= 1 and n <= 4);
-            for (int i = 0; i < n; ++i) {
-                if (this->mom_to_compute[i]) {
-                    internal::update_mom(this->mom, i, this->hg);
-                    this->mom_to_compute[i] = false;
-                }
-            }
-            return this->mom[n - 1];
         }
         
         /*!
@@ -685,19 +647,11 @@ namespace uncertainties {
         */
         Real m(const int n) const {
             assert(n >= 1 and n <= 4);
-            if (this->mom_to_compute[n - 1]) {
-                std::array<Real, 4> mom;
-                for (int i = 0; i < n; ++i) {
-                    if (this->mom_to_compute[i]) {
-                        internal::update_mom(mom, i, this->hg);
-                    } else {
-                        mom[i] = this->mom[i];
-                    }
-                }
-                return mom[n - 1];
-            } else {
-                return this->mom[n - 1];
+            std::array<Real, 4> mom;
+            for (int i = 0; i < n; ++i) {
+                internal::update_mom(mom, i, this->hg);
             }
+            return mom[n - 1];
         }
 
         /*!
@@ -719,8 +673,8 @@ namespace uncertainties {
         */
         template<typename AnyReal, Prop any_prop>
         explicit UReal2(const UReal2<AnyReal, any_prop> &x):
-        hg {x.hg}, mu {static_cast<Real>(x.mu)}, mom_to_compute {x.mom_to_compute} {
-            std::copy(x.mom.begin(), x.mom.end(), this->mom.begin());
+        hg {x.hg}, mu {static_cast<Real>(x.mu)} {
+            ;
         }
         
         /*!
@@ -735,8 +689,6 @@ namespace uncertainties {
             UReal2<OtherReal, prop> x;
             x.hg = this->hg;
             x.mu = OtherReal {this->mu};
-            x.mom_to_compute = this->mom_to_compute;
-            std::copy(this->mom.begin(), this->mom.end(), x.mom.begin());
             return x;
         }
         
@@ -752,6 +704,13 @@ namespace uncertainties {
         */
         inline friend Real cov(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) noexcept {
             return internal::compute_c2(x.hg, y.hg) - x.m(1) * y.m(1);
+        }
+        
+        /*!
+        \brief Compute the correlation.
+        */
+        inline friend Real corr(const UReal2<Real, prop> &x, const UReal2<Real, prop> &y) noexcept {
+            return cov(x, y) / (x.s() * y.s());
         }
         
         Real _grad(const UReal2<Real, prop> &x) const {
@@ -794,9 +753,6 @@ namespace uncertainties {
         ) {
             UReal2<Real, prop> result;
             result.mu = fx;
-            for (bool &b : result.mom_to_compute) {
-                b = true;
-            }
             
             const Real hddfdxdx = ddfdxdx / 2;
             
@@ -831,9 +787,6 @@ namespace uncertainties {
         ) {
             UReal2<Real, prop> result;
             result.mu = fxy;
-            for (bool &b : result.mom_to_compute) {
-                b = true;
-            }
 
             constexpr Id maxid = std::numeric_limits<Id>::max();
             const std::pair<Id, Id> pmaxid {maxid, maxid};
@@ -984,11 +937,6 @@ namespace uncertainties {
     using ufloat2e = UReal2E<float>;
     using ufloat2m = UReal2M<float>;
     
-    template<typename Real, Prop prop>
-    inline Real nom(UReal2<Real, prop> &x) noexcept {
-        return x.n();
-    }
-    
     /*!
     \brief Return `x.n()`.
     */
@@ -997,11 +945,6 @@ namespace uncertainties {
         return x.n();
     }
 
-    template<typename Real, Prop prop>
-    inline Real sdev(UReal2<Real, prop> &x) noexcept {
-        return x.s();
-    }
-    
     /*!
     \brief Return `x.s()`.
     */

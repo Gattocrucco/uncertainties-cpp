@@ -7,7 +7,8 @@ See how to put package on homebrew.
 Function to parse strings.
 
 In math functions with singularities in the derivative, check that the mean is
-not close to the singularity and warn the user on cerr.
+not close to the singularity and warn the user on cerr. => No because it
+would require to compute the standard deviation at each step.
 
 Implement `numeric_limits`. In namespace `uncertainties` or `std`? Look for what
 `boost::mp` does and what `Eigen` expects.
@@ -43,8 +44,6 @@ Implement bias correction for higher order moments.
 
 `corr`
 
-Remove moment caching altogether?
-
 Design a version of `ureals` for `UReal2`. Linear transformation? Same
 standardized moments for all variables?
 
@@ -58,12 +57,14 @@ correlations if there are identical arguments.
 
 Implement `UReal2::binary_assign`.
 
-Think a sensible interface to allow inplace unary operations
-(implement `UReal(2)::unary_inplace`). (Second optional argument to all the
-unary functions in `math.hpp`? => No because they have to return something in one case and nothing in the other.)
+Think a sensible interface to allow inplace unary operations (implement
+`UReal(2)::unary_inplace`). (Second optional argument to all the unary
+functions in `math.hpp`? => No because they have to return something in one
+case and nothing in the other.)
 
 Maximum entropy pdf given the moments. See RV Abramov paper.
 
-Fit with propagation like `lsqfit` but at second order. See notebook June 11.
+Fit with propagation like `lsqfit` but at second order.
 
-Move `std_moments` and `central_moments` to `UReal2` constructor with option to center moments.
+Move `std_moments` and `central_moments` to `UReal2` constructor with option to
+center moments.

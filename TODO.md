@@ -30,8 +30,6 @@ Use cholesky in `ureals`.
 
 Add grad member function to compute derivatives.
 
-Rewrite `UReal::cov` using synchronized iteration.
-
 Use balanced sum to compute the standard deviation?
 
 ## UReal2

@@ -95,9 +95,6 @@ namespace uncertainties {
     std::string format(const Number &x,
                        const float errdig=1.5f,
                        const std::string &sep=" ± ");
-
-    template<typename OutVector, typename InVectorA, typename InVectorB>
-    OutVector ureals(const InVectorA &mu, const InVectorB &cov);
 }
 
 #endif /* end of include guard: UNCERTAINTIES_CORE_HPP_D4C14D73 */

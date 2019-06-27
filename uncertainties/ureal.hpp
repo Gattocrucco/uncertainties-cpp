@@ -30,6 +30,7 @@
 #include <cmath>
 #include <utility>
 #include <cassert>
+#include <limits>
 
 #include "core.hpp"
 
@@ -490,40 +491,30 @@ namespace uncertainties {
         \brief Compute the covariance between `x` and `y`.
         */
         friend Real cov(const UReal<Real> &x, const UReal<Real> &y) {
-            Real cov(0);
-            if (x.id > 0 && y.id > 0) {
+            Real cov = 0;
+            if (x.id > 0 and y.id > 0) {
                 if (x.id == y.id) {
                     cov += x.sdev * y.sdev;
                 }
-            } else if (x.id < 0 or y.id < 0) {
-                // simplify and optimize using synchronized iteration
-                const UReal<Real> *min_size, *max_size;
-                if (x.sigma.size() > y.sigma.size()) {
-                    min_size = &y;
-                    max_size = &x;
-                } else {
-                    min_size = &x;
-                    max_size = &y;
+            } else if (x.id < 0 and y.id > 0) {
+                const typename std::map<Id, Real>::const_iterator xit = x.sigma.find(y.id);
+                if (xit != x.sigma.end()) {
+                    cov += xit->second * y.sdev;
                 }
-                const auto END = max_size->sigma.end();
-                if (min_size->id > 0) {
-                    const auto IT = max_size->sigma.find(min_size->id);
-                    if (IT != END) {
-                        cov += min_size->sdev * IT->second;
-                    }
-                } else if (min_size->id < 0) {
-                    for (const auto &it : min_size->sigma) {
-                        if (max_size->id > 0) {
-                            if (it.first == max_size->id) {
-                                cov += it.second * max_size->sdev;
-                            }
-                        } else if (max_size->id < 0) {
-                            const auto IT = max_size->sigma.find(it.first);
-                            if (IT != END) {
-                                cov += it.second * IT->second;
-                            }
-                        }
-                    }
+            } else if (x.id > 0 and y.id < 0) {
+                const typename std::map<Id, Real>::const_iterator yit = y.sigma.find(x.id);
+                if (yit != y.sigma.end()) {
+                    cov += x.sdev * yit->second;
+                }
+            } else if (x.id < 0 and y.id < 0) {
+                typename std::map<Id, Real>::const_iterator xit = x.sigma.begin();
+                typename std::map<Id, Real>::const_iterator yit = y.sigma.begin();
+                while (xit != x.sigma.end() and yit != y.sigma.end()) {
+                    const Id xid = xit->first;
+                    const Id yid = yit->first;
+                    if (xid == yid) cov += xit->second * yit->second;
+                    if (xid <= yid) ++xit;
+                    if (yid <= xid) ++yit;
                 }
             }
             return cov;
@@ -759,10 +750,6 @@ namespace uncertainties {
             const Real mu = this->mu * inv_x;
             return binary_assign(x, mu, inv_x, -mu * inv_x);
         }
-        
-        // template<typename OutVector, typename InVectorA, typename InVectorB>
-        // friend OutVector
-        // ureals(const InVectorA &, const InVectorB &, const Order);
     };
     
     /*!

@@ -23,9 +23,9 @@ check UReal(2) works with that.
 
 Use the `UNCERTAINTIES_EXTERN_*` macros in all headers.
 
-Optimize `UReal2::binary` and `UReal::binary`.
-
 ## UReal
+
+Optimize `UReal::binary`.
 
 Use cholesky in `ureals`.
 

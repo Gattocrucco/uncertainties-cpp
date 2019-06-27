@@ -865,24 +865,110 @@ namespace uncertainties {
                 if (idy <= idx) ++ity;
             }
             
-            // I shall consider the following code a very inefficient patch.
             if (hddfdxdy != 0) {
-                const ConstDiagIt end = result.hg.cdend();
-                ConstDiagIt iti, itj;
-                for (iti = result.hg.cdbegin(); iti != end; ++iti) {
-                    for (itj = iti; itj != end; ++itj) {
-                        const Id idi = iti->first;
-                        const Id idj = itj->first;
-                        const Real dix = x.hg.diag_get(idi).grad;
-                        const Real djx = x.hg.diag_get(idj).grad;
-                        const Real diy = y.hg.diag_get(idi).grad;
-                        const Real djy = y.hg.diag_get(idj).grad;
-                        result.hg.hhess(idi, idj) += hddfdxdy * (dix * djy + djx * diy);
+                const ConstDiagIt xend = x.hg.cdend();
+                const ConstDiagIt yend = y.hg.cdend();
+                for (ConstDiagIt itx = x.hg.cdbegin(); itx != xend; ++itx) {
+                    const Id idx = itx->first;
+                    const Diag &dx = itx->second;
+                    for (ConstDiagIt ity = y.hg.cdbegin(); ity != yend; ++ity) {
+                        const Id idy = ity->first;
+                        const Diag &dy = ity->second;
+                        const Id minid = std::min(idx, idy);
+                        const Id maxid = std::max(idx, idy);
+                        const Real addend = hddfdxdy * dx.grad * dy.grad;
+                        if (minid != maxid) {
+                            result.hg.tri(minid, maxid) += addend;
+                        } else {
+                            result.hg.diag(minid).hhess += 2 * addend;
+                        }
                     }
                 }
             }
 
             return result;
+        }
+        
+        /*!
+        \brief Compute a two argument function, storing the result in `x`.
+        
+        `fxy`, `dfdx`, `dfdy`, `ddfdxdx`, `ddfdydy`, `ddfdxdy` must the
+        function, its first derivatives and its second derivatives computed at
+        `x.first_order_n()`, `y.first_order_n()`.
+        */
+        friend void binary_assign(
+            UReal2<Real, prop> &x, const UReal2<Real, prop> &y,
+            const Real &fxy,
+            const Real &dfdx, const Real &dfdy,
+            const Real &ddfdxdx, const Real &ddfdydy, const Real &ddfdxdy
+        ) {
+            x.mu = fxy;
+
+            constexpr Id maxid = std::numeric_limits<Id>::max();
+            const std::pair<Id, Id> pmaxid {maxid, maxid};
+
+            const Real hddfdxdx = ddfdxdx / 2;
+            const Real hddfdydy = ddfdydy / 2;
+            const Real hddfdxdy = ddfdxdy / 2;
+        
+            ConstHessIt itx = x.hg.chbegin(hddfdxdx == 0);
+            const ConstHessIt xend = x.hg.chend();
+            ConstHessIt ity = y.hg.chbegin(hddfdydy == 0);
+            const ConstHessIt yend = y.hg.chend();
+            
+            while (itx != xend or ity != yend) {
+                const std::pair<Id, Id> idx = itx != xend ? std::make_pair(itx.id1(), itx.id2()) : pmaxid;
+                const std::pair<Id, Id> idy = ity != yend ? std::make_pair(ity.id1(), ity.id2()) : pmaxid;
+                
+                Real *hhess;
+                Diag *diag;
+                
+                if (idx <= idy) {
+                    hhess = &x.hg.hhess(idx.first, idx.second);
+                    *hhess += hddfdxdx * itx.diag1().grad * itx.diag2().grad;
+                    *hhess += dfdx * (*itx);
+                    if (idx.first == idx.second) {
+                        diag = &x.hg.diag(idx.first);
+                        diag->mom = itx.diag1().mom;
+                        diag->grad += dfdx * itx.diag1().grad;
+                    }
+                }
+                
+                if (idy <= idx) {
+                    if (idx != idy) {
+                        hhess = &x.hg.hhess(idy.first, idy.second);
+                        if (idy.first == idy.second) {
+                            diag = &x.hg.diag(idy.first);
+                            diag->mom = ity.diag1().mom;
+                        }
+                    }
+                    *hhess += hddfdydy * ity.diag1().grad * ity.diag2().grad;
+                    *hhess += dfdy * (*ity);
+                    if (idy.first == idy.second) {
+                        diag->grad += dfdy * ity.diag1().grad;
+                    }
+                }
+                
+                if (idx <= idy) ++itx;
+                if (idy <= idx) ++ity;
+            }
+            
+            // I shall consider the following code a very inefficient patch.
+            if (hddfdxdy != 0) {
+                const ConstDiagIt end = x.hg.cdend();
+                ConstDiagIt iti, itj;
+                for (iti = x.hg.cdbegin(); iti != end; ++iti) {
+                    for (itj = iti; itj != end; ++itj) {
+                        const Id idi = iti->first;
+                        const Id idj = itj->first;
+                        const Real &dix = x.hg.diag_get(idi).grad;
+                        const Real &djx = x.hg.diag_get(idj).grad;
+                        const Real &diy = y.hg.diag_get(idi).grad;
+                        const Real &djy = y.hg.diag_get(idj).grad;
+                        x.hg.hhess(idi, idj) += hddfdxdy * (dix * djy + djx * diy);
+                    }
+                }
+            }
         }
         
         friend inline const UReal2<Real, prop> &

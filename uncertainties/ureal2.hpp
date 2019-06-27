@@ -837,18 +837,19 @@ namespace uncertainties {
                 
                 if (idx <= idy) {
                     hhess = &result.hg.hhess(idx.first, idx.second);
-                    *hhess += hddfdxdx * itx.diag1().grad * itx.diag2().grad;
+                    *hhess = hddfdxdx * itx.diag1().grad * itx.diag2().grad;
                     *hhess += dfdx * (*itx);
                     if (idx.first == idx.second) {
                         diag = &result.hg.diag(idx.first);
                         diag->mom = itx.diag1().mom;
-                        diag->grad += dfdx * itx.diag1().grad;
+                        diag->grad = dfdx * itx.diag1().grad;
                     }
                 }
                 
                 if (idy <= idx) {
                     if (idx != idy) {
                         hhess = &result.hg.hhess(idy.first, idy.second);
+                        *hhess = 0;
                         if (idy.first == idy.second) {
                             diag = &result.hg.diag(idy.first);
                             diag->mom = ity.diag1().mom;

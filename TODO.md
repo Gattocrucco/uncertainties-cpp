@@ -21,11 +21,10 @@ Find a C++ template library for complex numbers with arbitrary numerical type
 (maybe in Boost?) (std::complex need to be defined only for builtin types) and
 check UReal(2) works with that.
 
-Use the `UNCERTAINTIES_EXTERN_*` macros in all headers.
+Use the `UNCERTAINTIES_EXTERN_*` macros in all headers, and for friend
+functions.
 
 ## UReal
-
-Optimize `UReal::binary`.
 
 Use cholesky in `ureals`.
 
@@ -33,8 +32,7 @@ Add grad member function to compute derivatives.
 
 Rewrite `UReal::cov` using synchronized iteration.
 
-Since the gradient is already stored in a binary tree, maybe use balanced sum
-to compute the standard deviation?
+Use balanced sum to compute the standard deviation?
 
 ## UReal2
 

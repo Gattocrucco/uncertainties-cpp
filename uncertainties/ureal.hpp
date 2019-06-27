@@ -602,23 +602,46 @@ namespace uncertainties {
         `x` and `y`; similarly for `dy`.
         */
         friend UReal<Real> binary(const UReal<Real> &x, const UReal<Real> &y,
-                           const Real mu,
+                           const Real &mu,
                            const Real &dx, const Real &dy) {
             UReal<Real> z;
             z.id = invalid_id;
-            z.mu = std::move(mu);
+            z.mu = mu;
             if (x.id > 0) {
                 z.sigma[x.id] = dx * x.sdev;
-            } else if (x.id < 0) {
+            } else if (x.id < 0 and y.id >= 0) {
                 for (const auto &it : x.sigma) {
                     z.sigma[it.first] = dx * it.second;
                 }
             }
             if (y.id > 0) {
                 z.sigma[y.id] += dy * y.sdev;
-            } else if (y.id < 0) {
+            } else if (y.id < 0 and x.id >= 0) {
                 for (const auto &it : y.sigma) {
                     z.sigma[it.first] += dy * it.second;
+                }
+            }
+            if (x.id < 0 and y.id < 0) {
+                typename std::map<Id, Real>::const_iterator xit = x.sigma.begin();
+                typename std::map<Id, Real>::const_iterator yit = y.sigma.begin();
+                constexpr Id maxid = std::numeric_limits<Id>::max();
+                while (xit != x.sigma.end() or yit != y.sigma.end()) {
+                    const Id xid = xit != x.sigma.end() ? xit->first : maxid;
+                    const Id yid = yit != y.sigma.end() ? yit->first : maxid;
+                    Real *p;
+                    if (xid <= yid) {
+                        p = &z.sigma[xid];
+                        *p = dx * xit->second;
+                        ++xit;
+                    }
+                    if (yid <= xid) {
+                        if (yid != xid) {
+                            p = &z.sigma[yid];
+                            *p = 0;
+                        }
+                        *p += dy * yit->second;
+                        ++yit;
+                    }
                 }
             }
             z.sdev = -1;
@@ -669,14 +692,16 @@ namespace uncertainties {
         For dependent variables this can be significantly more efficient than
         using `binary` and then assigning the result to the first operand.
         */
-        const UReal<Real> &binary_assign(const UReal<Real> &x, const Real mu,
-                                  const Real &dt, const Real &dx) {
+        const UReal<Real> &binary_assign(const UReal<Real> &x, const Real &mu,
+                                         const Real &dt, const Real &dx) {
             if (&x == this) {
                 const Real d = dt + dx;
                 for (auto &it : this->sigma) {
                     it.second *= d;
                 }
-                this->sdev *= d;
+                if (this->sdev > 0 or this->id > 0) {
+                    this->sdev *= d;
+                }
             } else {
                 if (this->id > 0) {
                     this->sigma[this->id] = this->sdev;
@@ -696,7 +721,7 @@ namespace uncertainties {
                 }
                 this->sdev = -1;
             }
-            this->mu = std::move(mu); // keep this last in case &x == this
+            this->mu = mu; // keep this last in case &x == this
             return *this;
         }
 

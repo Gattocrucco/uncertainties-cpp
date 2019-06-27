@@ -31,6 +31,7 @@
 #include <utility>
 #include <cassert>
 #include <limits>
+#include <sstream>
 
 #include "core.hpp"
 
@@ -553,6 +554,29 @@ namespace uncertainties {
         */
         friend Real corr(const UReal<Real> &x, const UReal<Real> &y) {
             return cov(x, y) / (x.s() * y.s());
+        }
+        
+        /*!
+        \brief Compute derivative with respect to `x`.
+        
+        \throw std::invalid_argument if `x` is not independent or if it has
+        no uncertainty information.
+        */
+        Real grad(const UReal<Real> &x) {
+            if (not (x.id > 0 or x.sigma.size() == 1)) {
+                std::ostringstream ss;
+                ss << "uncertainties::UReal::grad: ";
+                ss << "variable is not independent and nontrivial";
+                throw std::invalid_argument(ss.str());
+            }
+            const Id xid = x.id > 0 ? x.id : x.sigma.begin()->first;
+            const typename std::map<Id, Real>::const_iterator it = this->sigma.find(xid);
+            if (it != this->sigma.end()) {
+                const Real &xg = x.id > 0 ? x.sdev : x.sigma.begin()->second;
+                return it->second / xg;
+            } else {
+                return 0;
+            }
         }
         
         /*!

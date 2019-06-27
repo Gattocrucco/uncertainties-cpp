@@ -28,8 +28,6 @@ functions.
 
 Use cholesky in `ureals`.
 
-Add grad member function to compute derivatives.
-
 Use balanced sum to compute the standard deviation?
 
 ## UReal2

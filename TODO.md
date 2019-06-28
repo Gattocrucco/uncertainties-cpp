@@ -26,8 +26,6 @@ functions.
 
 ## UReal
 
-Use cholesky in `ureals`.
-
 Use balanced sum to compute the standard deviation?
 
 ## UReal2

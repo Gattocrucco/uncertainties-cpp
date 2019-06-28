@@ -31,6 +31,8 @@ this header.
 #include <stdexcept>
 #include <cmath>
 #include <string>
+#include <sstream>
+#include <cassert>
 
 #include <Eigen/Dense>
 
@@ -55,6 +57,9 @@ namespace uncertainties {
     
     \throws std::invalid_argument if the sizes of `mu` and `cov` do not match.
     
+    `cov` is not checked to be symmetric. If `cov` is column-major, only the
+    lower triangle is read; if it is row-major, the upper triangle.
+    
     `OutVector` shall be a default-constructible sequence type with the member
     function `push_back` and the member type `value_type`.
     `OutVector::value_type` shall be an `UReal`-like type. `InVectorA` and
@@ -64,10 +69,9 @@ namespace uncertainties {
     */
     template<typename OutVector, typename InVectorA, typename InVectorB>
     OutVector ureals(const InVectorA &mu, const InVectorB &cov) {
-        // \todo split this function internals in one function diagonalizing the
+        // TODO split this function internals in one function diagonalizing the
         // matrix and one building the variables to allow for specialization
         // respect to InVectorB and OutVector
-        // \todo use Cholesky instead of diagonalization
         const std::size_t n = mu.size();
         if (n != 0 ? cov.size() % n != 0 or cov.size() / n != n : cov.size() != 0) {
             throw std::invalid_argument(
@@ -86,42 +90,48 @@ namespace uncertainties {
         Matrix V(n, n);
         // Eigen::Map can use directly cov.data()
         // but then non-vector sequences would not be supported
-        for (std::size_t i = 0; i < n; ++i) {
-            for (std::size_t j = 0; j < n; ++j) {
-                V(i, j) = cov[n * i + j];
+        for (std::size_t j = 0; j < n; ++j) {
+            for (std::size_t i = j; i < n; ++i) { // only lower triangle
+                V(i, j) = cov[i + n * j];
             }
         }
-        // \todo explicitly check V is symmetric
-        Eigen::SelfAdjointEigenSolver<Matrix> solver(V);
-        if (solver.info() != Eigen::Success) {
-            throw std::runtime_error(
-                "uncertainties::ureals: error diagonalizing covariance matrix"
-            );
+        const Eigen::LDLT<Matrix> ldlt(V);
+        if (ldlt.info() != Eigen::Success) {
+            std::ostringstream ss;
+            ss << "uncertainties::ureals: ";
+            ss << "covariance matrix decomposition failed";
+            throw std::runtime_error(ss.str());
         }
-        Matrix U = solver.eigenvectors();
-        Vector var = solver.eigenvalues();
-        // the following can be optimized by using UReal internals
-        // but using the generic algorithm will allow to change implementation
-        // or add other uncertainty-propagating types
+        if (not ldlt.isPositive()) {
+            std::ostringstream ss;
+            ss << "uncertainties::ureals: ";
+            ss << "convariance matrix is not positive semidefinite";
+            throw std::runtime_error(ss.str());
+        }
+        const auto L = ldlt.matrixL();
+        const auto D = ldlt.vectorD();
         OutVector x;
         for (std::size_t i = 0; i < n; ++i) {
-            const Real v = var(i);
-            if (v < 0) {
-                throw std::invalid_argument(
-                    "uncertainties::ureals: covariance matrix has "
-                    "negative eigenvalues"
-                );
-            }
+            const Real &v = D(i);
+            assert(v >= 0);
             using std::sqrt;
-            x.push_back(UType(0, sqrt(v)));
+            x.emplace_back(0, sqrt(v));
         }
-        OutVector out;
+        OutVector out(n);
         for (std::size_t i = 0; i < n; ++i) {
-            UType y(mu[i]);
-            for (std::size_t j = 0; j < n; ++j) {
-                y += U(i, j) * x[j];
+            UType &y = out[i];
+            for (std::size_t j = 0; j < i; ++j) { // L is lower triangular
+                y += L(i, j) * x[j];
             }
-            out.push_back(std::move(y));
+            y += x[i]; // L(i, i) == 1 with LDLT decomposition
+        }
+        const auto &perm = ldlt.transpositionsP().indices();
+        for (std::size_t i = n; i > 0; --i) {
+            using std::swap;
+            swap(out[i - 1], out[perm(i - 1)]);
+        }
+        for (std::size_t i = 0; i < n; ++i) {
+            out[i] += mu[i];
         }
         return out;
     }

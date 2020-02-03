@@ -56,3 +56,51 @@ Fit with propagation like `lsqfit` but at second order.
 
 Move `std_moments` and `central_moments` to `UReal2` constructor with option to
 center moments.
+
+Class function for returning at once the 4 moments.
+
+Make it that m(1) returns the mean because it is more intuitive for the end
+user. Add a class function that supersedes the current m(1) i.e. computes the
+second-order correction to the mean.
+
+In the documentation explain the bayesian-frequentist interpretation of
+propagation kind.
+
+nella propagazione al secondo ordine riesco a fare qualcosa che in qualche
+senso approssima risultati bayesiani? tipo come lsqfit che si considera
+bayesiano in approssimazione gaussiana. allora: la propagazione di tipo M è
+quella da usare per propagare i momenti di un posteriore. però si applica al
+fit ai minimi quadrati? cioè, posso considerare il fit ai minimi quadrati come
+un'approssimazione della media del posteriore (e quindi quando è biased dire e
+sticazzi?) minimi quadrati mi dà la moda del posteriore assumendo che dati e
+priori siano gaussiani. assumendo che il posteriore sia gaussiano, mi dà allora
+la media. se voglio andare al secondo ordine cosa devo fare? non minimi
+quadrati ma minimo log p? È impraticabile perché per ricavare log p dai momenti
+dovrei fare maxentropy che è computazionalmente infattibile. se io faccio
+minimi quadrati e poi propago M, quello che sto facendo è approssimare la media
+del posteriore? Non vedo direttamente perché, però il fatto che non facendo
+nulla ho il primo ordine, e che facendo propagazione E ho effettivamente la
+correzione del bias, mi suggerisce che facendo propagazione M sto stimando la
+media del posteriore.
+
+Ma ha veramente senso fare la propagazione unbiased per i momenti superiori?
+Anzi di solito è roba positiva di cui voglio una stima positiva, insomma una
+stima "bayesiana" (pensa i casini quando devi fare la media pesata e la matrice
+di covarianza non è definita positiva). Idem per la curtosi immagino. Fare la
+stima unbiased sembra una questione di completezza delle funzionalità del
+software ma probabilmente non è quello che la gente dovrebbe fare, e questo è
+uno dei miei requisiti, far fare cose sensate agli utenti. Inoltre altrimenti
+per avere stima unbiased insieme a stima bayesiana dei momenti superiori dovrei
+aggiungere parametri, complicando l'interfaccia e la comprensibilità del
+codice. Tutti questi casini esistono per colpa dei frequentisti, però il bias
+in vari casi è utile perché è una cosa che tende a conservarsi. Però comunque
+mi rimane il problema che nel caso "correzione del bias" devo dare i momenti
+superiori che tengono conto della correzione che c'ha la sua distribuzione
+dopotutto. Va bene quello che sto già facendo o sbucano dei termini? E come
+sbucano? E fanno venire positive le cose che devono essere positive?
+
+Non è che per magia per correggere il bias anziché propagare mi basta fare il
+ricentramento con la correzione al contrario? (mi sa che me l'ero già chiesto e
+la risposta era no). Dunque: la correzione nel centrare la varianza compare al
+quadrato quindi no spero comunque che in qualche modo ci sia un trucco magico
+perché altrimenti devo riscrivere a mano di nuovo tutta la serie.

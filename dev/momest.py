@@ -11,6 +11,7 @@ ax = fig.subplots(1, 1)
 
 ax.plot(np.arange(len(var)) * 2, N, '.')
 ax.grid()
+ax.set_title('Normal distribution moment estimation')
 ax.set_xlabel('moment order')
 ax.set_ylabel('sample required for 100 % error on moment')
 

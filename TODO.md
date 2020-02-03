@@ -2,6 +2,10 @@
 
 See how to put package on homebrew.
 
+Python interface. Use pybind11. The name of the module should probably be
+different, because of my poor initial choice. Maybe the non-agnostic fitting
+interface could be implemented only at Python level.
+
 ## UReal and UReal2
 
 Function to parse strings.
@@ -15,14 +19,17 @@ Implement `numeric_limits`. In namespace `uncertainties` or `std`? Look for what
 
 Check if `UReal` works as user type to Eigen.
 
-Python interface. (Standard C extension compiled with specific types?)
-
 Find a C++ template library for complex numbers with arbitrary numerical type
 (maybe in Boost?) (std::complex need to be defined only for builtin types) and
 check UReal(2) works with that.
 
 Use the `UNCERTAINTIES_EXTERN_*` macros in all headers, and for friend
 functions.
+
+In the formatting functions, use the `<<` operator instead of the manual
+computation I'm doing because probably it is more efficient and handles
+unusual cases better. For example, probably the current implementation would
+fail if more digits than what 64 bit supports were requested.
 
 ## UReal
 

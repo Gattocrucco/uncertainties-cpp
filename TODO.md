@@ -36,9 +36,9 @@ Expression templates. Is there something generic available? Should I prepare
 definitions for using it? Or would it be so straightforward that I would just
 need to give advice on it?
 
-## UReal
-
-Use balanced sum to compute the standard deviation?
+Use balanced sum to compute the standard deviation of UReal, and the mean
+correction of UReal2? Maybe there is an efficient way since I'm already storing
+coefficients in trees.
 
 ## UReal2
 

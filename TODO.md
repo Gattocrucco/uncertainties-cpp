@@ -31,6 +31,10 @@ computation I'm doing because probably it is more efficient and handles
 unusual cases better. For example, probably the current implementation would
 fail if more digits than what 64 bit supports were requested.
 
+Expression templates. Is there something generic available? Should I prepare
+definitions for using it? Or would it be so straightforward that I would just
+need to give advice on it?
+
 ## UReal
 
 Use balanced sum to compute the standard deviation?

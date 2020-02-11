@@ -45,6 +45,12 @@ namespace uncertainties {
             return prop == Prop::est ? -1 : 1;
         }
         
+        // I should change this function to one that spits out all the moments
+        // up to something because anyway I have to compute the lower ones.
+        // In this way I could recycle the computation of m1 * m1, which is
+        // recomputed 3 times otherwise. Also: using direct formula vs.
+        // incremental formula for centering, which is faster? Which is more
+        // numerically stable?
         template<typename Real>
         void update_mom(std::array<Real, 4> &mom,
                         const int i,

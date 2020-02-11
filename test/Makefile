@@ -31,4 +31,5 @@ $(programs): %: %.cpp.o uncertainties.cpp.o
 $(objects): %.cpp.o: %.cpp ../uncertainties/*.hpp ../uncertainties/internal/*.hpp
 	$(CC) $(CFLAGS) -c -o $@ $<
 $(benchmark_objects): CFLAGS += -O2
+# I should do a separate compilation of uncertainties.cpp for the benchmarks.
 mpfrformat mpfrmath mpfrureals: LDFLAGS += -lmpfr

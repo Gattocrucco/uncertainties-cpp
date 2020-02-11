@@ -4,7 +4,8 @@ See how to put package on homebrew.
 
 Python interface. Use pybind11. The name of the module should probably be
 different, because of my poor initial choice. Maybe the non-agnostic fitting
-interface could be implemented only at Python level.
+interface could be implemented only at Python level. Possible name: YALSI for
+"Yet Another Least Squares Interface"
 
 ## UReal and UReal2
 
@@ -73,6 +74,10 @@ Class function for returning at once the 4 moments.
 Make it that m(1) returns the mean because it is more intuitive for the end
 user. Add a class function that supersedes the current m(1) i.e. computes the
 second-order correction to the mean.
+
+Should I allow a negative threshold in the construction of UReal2 with this
+meaning: that moments close to the boundary of allowed moments shall be
+refused?
 
 In the documentation explain the bayesian-frequentist interpretation of
 propagation kind.

@@ -27,11 +27,25 @@
 
 #include <Eigen/Dense>
 
+// This files defines the function `check_moments_throw` used by UReal2 when
+// constructing to check validity of moments. I've read the way to check
+// moments on wikipedia: https://en.wikipedia.org/wiki/Hamburger_moment_problem.
+// There they define it for the complete infinite list of moments, while I use
+// it on a submatrix. I've not even checked theoretically if this should work,
+// I have just done a lot of empirical testing (besides the tests hardcoded in
+// test/checkmom.cpp).
+
 namespace uncertainties {
     namespace internal {        
         template<typename Real>
         using HKMatrix = Eigen::Matrix<Real, 5, 5>;
+        // "HK" stands for Henkel Kernel.
        
+        // Return 0 if the matrix is positive semidefinite. Return 1 if it is
+        // negative definite. Otherwise, return min_eigenvalue / max_eigenvalue.
+        // Note this last formula will be negative, think of min_eigenvalue as
+        // "max negative eigenvalue". So: 0 = ok, > 0 = definitely not ok,
+        // < 0 = probably not ok, check that the number is small enough.
         template<typename Real>
         Real hamburger(const HKMatrix<Real> &M) {
             Eigen::SelfAdjointEigenSolver<HKMatrix<Real>> solver(M, Eigen::EigenvaluesOnly);
@@ -53,15 +67,24 @@ namespace uncertainties {
                 }
             }
             if (max_nonneg < 0) {
+                // no nonnegative eigenvalue, so they are all negative
                 return 1;
             } else if (max_neg > 0) {
+                // no negative eigenvalue, so they are all nonnegative
                 return 0;
             } else {
                 return max_neg / max_nonneg;
             }
         }
-
-      template<typename Real, std::size_t n>
+        
+        // Given an array of central moments 2 to 8, or standardized moments
+        // 3 to 8 (the length of the array argument decides that), return 0
+        // if the moments are realizable (i.e. there exists a distribution with
+        // those moments), otherwise a positive number if they are surely
+        // irrealizable, a negative one if the result may be unsure due to
+        // numerical error; in the latter case the number then has to be
+        // compared to a threshold (the closer to zero, the better).
+        template<typename Real, std::size_t n>
         Real check_moments(const std::array<Real, n> &moments) {
             static_assert(n == 6 or n == 7, "n != 6 and 7");
             HKMatrix<Real> M;
@@ -75,9 +98,17 @@ namespace uncertainties {
             return hamburger(M);
         }
         
+        // Given an array of central moments 2 to 8, or standardized moments
+        // 3 to 8 (the length of the array argument decides that), throw a
+        // std::invalid_argument exception if the moments are not realizable.
+        // Threshold is a small nonnegative threshold for numerical error.
+        // Numerical close ties should happen only when the moments are on the
+        // border of allowed moments, so to be conservative you can pass 0 to
+        // nail "dangerous but allowed" moments.
         template<typename Real, std::size_t n>
         void check_moments_throw(const std::array<Real, n> & moments,
                                  const Real &threshold) {
+            static_assert(n == 6 or n == 7, "n != 6 and 7");
             assert(threshold >= 0);
             const Real cond = check_moments(moments);
             if (cond < -threshold or cond > 0) {
@@ -110,7 +141,7 @@ namespace uncertainties {
                 } else {
                     ss << "all the eigenvalues of the Henkel kernel are negative. ";
                 }
-                ss << "See uncertainties documentation and ";
+                ss << "See uncertainties-cpp documentation and ";
                 ss << "https://en.wikipedia.org/wiki/Hamburger_moment_problem";
                 throw std::invalid_argument(ss.str());
             }

@@ -42,12 +42,11 @@ coefficients in trees.
 
 ## UReal2
 
-Allow first order propagation for all moments with function `first_order_m()`.
-
-Implement bias correction for higher order moments.
+Implement bias correction for higher order moments (but see long note below).
 
 Design a version of `ureals` for `UReal2`. Linear transformation? Same
-standardized moments for all variables?
+standardized moments for all variables? Or can I obtain arbitrary moments up
+to the fourth order with a quadratical transformation of independent variables?
 
 Third and fourth order correlation functions (automatical generation). Do it
 first storing all ids and coefficients in arrays then iterating.
@@ -62,14 +61,20 @@ Think a sensible interface to allow inplace unary operations (implement
 functions in `math.hpp`? => No because they have to return something in one
 case and nothing in the other.)
 
-Maximum entropy pdf given the moments. See RV Abramov paper.
+Maximum entropy pdf given the moments. See R.V. Abramov 2010 paper. Question:
+doing maxentropy on only one variable is equivalent to doing on two and then
+marginalize?
 
-Fit with propagation like `lsqfit` but at second order.
+Fit with propagation like `lsqfit` but at second order. Do a generic wrapper
+of a least squares procedure. Look at lsqfit for how to diagonalize the data
+covariance matrix efficiently because it is O(n^3).
 
 Move `std_moments` and `central_moments` to `UReal2` constructor with option to
 center moments.
 
 Class function for returning at once the 4 moments.
+
+Allow first order propagation for all moments with function `first_order_m()`.
 
 Make it that m(1) returns the mean because it is more intuitive for the end
 user. Add a class function that supersedes the current m(1) i.e. computes the
@@ -81,6 +86,14 @@ refused?
 
 In the documentation explain the bayesian-frequentist interpretation of
 propagation kind.
+
+The complexity to compute a kurtosis is O(n^4) where n is the number of
+variables. It is very large. Maybe the interface of UReal2 should not allow the
+user to compute by default a kurtosis to second order. For example: the
+functions m, moments, or whatever may have an order parameter that defaults to
+1, and a complexity parameter k that in any case caps the complexity to n^k by
+truncating the series. This complexity capping may not give sensible results
+however.
 
 nella propagazione al secondo ordine riesco a fare qualcosa che in qualche
 senso approssima risultati bayesiani? tipo come lsqfit che si considera

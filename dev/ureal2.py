@@ -5,6 +5,22 @@ import numpy as np
 from fractions import Fraction
 from collections import Counter, OrderedDict
 
+__doc__ = """
+Usage examples:
+>>> import ureal2
+>>> print(ureal2.gen_corr('','').__repr__('\n')) # second order variance
+>>> print(ureal2.gen_corr('a','b').__repr__('\n')) # s.o. covariance
+>>> print(ureal2.gen_corr('','','','').__repr__('\n')) # s.o. 4th moment
+The output from first line (variance) is:
+    G_i G_i V_ii + 
+    2 G_i H_ii V_iii + 
+    H_ii H_ii V_iiii + 
+    2 H_ij H_ij V_iijj + 
+    H_ii H_jj V_iijj
+G stands for gradient, H for half hessian, V for moment. The indices are summed
+over, with the constraint that different indices can not yield the same value.
+"""
+
 SIMPL_V_REPR = False
 
 indices = ('i', 'j', 'k', 'l', 'm', 'n', 'o', 'p')

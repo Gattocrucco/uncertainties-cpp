@@ -64,6 +64,10 @@ namespace uncertainties {
             // B1)  2 H_ij H_ij V_iijj + 
             // B2)  H_ii H_jj V_iijj
             
+            // Linearize the complexity of these formulas! To do that for higher
+            // order I will probably need to do something with the CAS, but
+            // for second order it is straightforward.
+            
             // CYCLE A: sum_i
             for (ConstDiagIt it = hg.cdbegin(); it != hg.cdend(); ++it) {
                 const Diag &d = (*it).second;
@@ -201,58 +205,58 @@ namespace uncertainties {
             // B1)  3 G_i G_i G_j G_j V_iijj +
             // A2)  4 G_i G_i G_i H_ii V_iiiii +
             // B2)  12 G_i G_j G_j H_ii V_iiijj +
-            // E1)  24 G_i G_i G_j H_ij V_iiijj +
+        //---> E1)  24 G_i G_i G_j H_ij V_iiijj +
             // B3)  4 G_i G_i G_i H_jj V_iiijj +
             // A3)  6 G_i G_i H_ii H_ii V_iiiiii +
             // B4)  6 G_j G_j H_ii H_ii V_iiiijj +
-            // E2)  48 G_i G_j H_ii H_ij V_iiiijj +
-            // E3)  24 G_i G_i H_ij H_ij V_iiiijj +
+        //---> E2)  48 G_i G_j H_ii H_ij V_iiiijj +
+        //---> E3)  24 G_i G_i H_ij H_ij V_iiiijj +
             // B6)  12 G_i G_i H_ii H_jj V_iiiijj +
-            // E4)  24 G_j G_j H_ii H_ij V_iiijjj +
-            // E5)  24 G_i G_j H_ij H_ij V_iiijjj +
+        //---> E4)  24 G_j G_j H_ii H_ij V_iiijjj +
+        //---> E5)  24 G_i G_j H_ij H_ij V_iiijjj +
             // B7)  12 G_i G_j H_ii H_jj V_iiijjj +
             // C1)  6 G_k G_k H_ii H_jj V_iijjkk +
-            // F1)  24 G_j G_k H_ii H_jk V_iijjkk +
-            // G1)  48 G_i G_j H_ik H_jk V_iijjkk +
-            // F2)  12 G_i G_i H_jk H_jk V_iijjkk +
+        //---> F1)  24 G_j G_k H_ii H_jk V_iijjkk +
+        //---> G1)  48 G_i G_j H_ik H_jk V_iijjkk +
+        //---> F2)  12 G_i G_i H_jk H_jk V_iijjkk +
             // A4)  4 G_i H_ii H_ii H_ii V_iiiiiii +
-            // E6)  24 G_j H_ii H_ii H_ij V_iiiiijj +
-            // E7)  48 G_i H_ii H_ij H_ij V_iiiiijj +
+        //---> E6)  24 G_j H_ii H_ii H_ij V_iiiiijj +
+        //---> E7)  48 G_i H_ii H_ij H_ij V_iiiiijj +
             // B8)  12 G_i H_ii H_ii H_jj V_iiiiijj +
-            // E8)  48 G_j H_ii H_ij H_ij V_iiiijjj +
-            // E9)  32 G_i H_ij H_ij H_ij V_iiiijjj +
+        //---> E8)  48 G_j H_ii H_ij H_ij V_iiiijjj +
+        //---> E9)  32 G_i H_ij H_ij H_ij V_iiiijjj +
             // B9)  12 G_j H_ii H_ii H_jj V_iiiijjj +
-            // E10) 48 G_i H_ii H_ij H_jj V_iiiijjj +
-            // G2)  96 G_j H_ij H_ik H_ik V_iiijjkk +
-            // F3)  48 G_k H_ii H_ik H_jj V_iiijjkk +
-            // F4)  48 G_i H_ik H_ik H_jj V_iiijjkk +
-            // G3)  96 G_j H_ii H_ik H_jk V_iiijjkk +
-            // H1)  96 G_i H_ij H_ik H_jk V_iiijjkk +
-            // F5)  24 G_i H_ii H_jk H_jk V_iiijjkk +
+        //---> E10) 48 G_i H_ii H_ij H_jj V_iiiijjj +
+        //---> G2)  96 G_j H_ij H_ik H_ik V_iiijjkk +
+        //---> F3)  48 G_k H_ii H_ik H_jj V_iiijjkk +
+        //---> F4)  48 G_i H_ik H_ik H_jj V_iiijjkk +
+        //---> G3)  96 G_j H_ii H_ik H_jk V_iiijjkk +
+        //---> H1)  96 G_i H_ij H_ik H_jk V_iiijjkk +
+        //---> F5)  24 G_i H_ii H_jk H_jk V_iiijjkk +
             // C2)  12 G_i H_ii H_jj H_kk V_iiijjkk +
             // A5)  H_ii H_ii H_ii H_ii V_iiiiiiii +
-            // E11) 24 H_ii H_ii H_ij H_ij V_iiiiiijj +
+        //---> E11) 24 H_ii H_ii H_ij H_ij V_iiiiiijj +
             // B10) 4 H_ii H_ii H_ii H_jj V_iiiiiijj +
-            // E12) 32 H_ii H_ij H_ij H_ij V_iiiiijjj +
-            // E13) 24 H_ii H_ii H_ij H_jj V_iiiiijjj +
-            // E14) 8 H_ij H_ij H_ij H_ij V_iiiijjjj +
-            // E15) 24 H_ii H_ij H_ij H_jj V_iiiijjjj +
+        //---> E12) 32 H_ii H_ij H_ij H_ij V_iiiiijjj +
+        //---> E13) 24 H_ii H_ii H_ij H_jj V_iiiiijjj +
+        //---> E14) 8 H_ij H_ij H_ij H_ij V_iiiijjjj +
+        //---> E15) 24 H_ii H_ij H_ij H_jj V_iiiijjjj +
             // B11) 3 H_ii H_ii H_jj H_jj V_iiiijjjj +
-            // G4)  48 H_ij H_ij H_ik H_ik V_iiiijjkk +
-            // F5a) 48 H_ii H_ik H_ik H_jj V_iiiijjkk +
-            // H2)  96 H_ii H_ij H_ik H_jk V_iiiijjkk +
-            // F6)  12 H_ii H_ii H_jk H_jk V_iiiijjkk +
+        //---> G4)  48 H_ij H_ij H_ik H_ik V_iiiijjkk +
+        //---> F5a) 48 H_ii H_ik H_ik H_jj V_iiiijjkk +
+        //---> H2)  96 H_ii H_ij H_ik H_jk V_iiiijjkk +
+        //---> F6)  12 H_ii H_ii H_jk H_jk V_iiiijjkk +
             // C3)  6 H_ii H_ii H_jj H_kk V_iiiijjkk +
-            // H3)  96 H_ij H_ij H_ik H_jk V_iiijjjkk +
-            // G5)  48 H_ii H_ik H_jj H_jk V_iiijjjkk +
-            // G6)  96 H_ii H_ij H_jk H_jk V_iiijjjkk +
-            // F7)  16 H_ij H_ij H_ij H_kk V_iiijjjkk +
-            // F8)  24 H_ii H_ij H_jj H_kk V_iiijjjkk +
-            // I1a) 24 H_ij H_il H_jk H_kl V_iijjkkll +
-            // I1b) 24 H_ij H_ik H_jl H_kl V_iijjkkll +
-            // J1)  32 H_ii H_jk H_jl H_kl V_iijjkkll +
-            // K1)  12 H_ij H_ij H_kl H_kl V_iijjkkll +
-            // L1)  12 H_ii H_jj H_kl H_kl V_iijjkkll +
+        //---> H3)  96 H_ij H_ij H_ik H_jk V_iiijjjkk +
+        //---> G5)  48 H_ii H_ik H_jj H_jk V_iiijjjkk +
+        //---> G6)  96 H_ii H_ij H_jk H_jk V_iiijjjkk +
+        //---> F7)  16 H_ij H_ij H_ij H_kk V_iiijjjkk +
+        //---> F8)  24 H_ii H_ij H_jj H_kk V_iiijjjkk +
+        //---> I1a) 24 H_ij H_il H_jk H_kl V_iijjkkll +
+        //---> I1b) 24 H_ij H_ik H_jl H_kl V_iijjkkll +
+        //---> J1)  32 H_ii H_jk H_jl H_kl V_iijjkkll +
+        //---> K1)  12 H_ij H_ij H_kl H_kl V_iijjkkll +
+        //---> L1)  12 H_ii H_jj H_kl H_kl V_iijjkkll +
             // D1)  H_ii H_jj H_kk H_ll V_iijjkkll
             
             const ConstDiagIt dend = hg.cdend();
@@ -500,6 +504,10 @@ namespace uncertainties {
             // A4)  H(a)_ii H(b)_ii V_iiii + 
             // B1)  2 H(a)_ij H(b)_ij V_iijj +
             // C1)  H(a)_ii H(b)_jj V_iijj
+            
+            // Linearize the complexity of these formulas! To do that for higher
+            // order I will probably need to do something with the CAS, but
+            // for second order it is straightforward.
             
             Real m(0);
             

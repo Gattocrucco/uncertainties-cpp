@@ -467,6 +467,7 @@ namespace uncertainties {
             return y;
         }
         
+        // friendship needed for conversion function below
         template<typename OtherReal>
         friend class UReal;
         
@@ -492,24 +493,35 @@ namespace uncertainties {
         \brief Compute the covariance between `x` and `y`.
         */
         friend Real cov(const UReal<Real> &x, const UReal<Real> &y) {
+            using MapIt = typename std::map<Id, Real>::const_iterator;
             Real cov = 0;
             if (x.id > 0 and y.id > 0) {
                 if (x.id == y.id) {
                     cov += x.sdev * y.sdev;
                 }
             } else if (x.id < 0 and y.id > 0) {
-                const typename std::map<Id, Real>::const_iterator xit = x.sigma.find(y.id);
+                const MapIt xit = x.sigma.find(y.id);
                 if (xit != x.sigma.end()) {
                     cov += xit->second * y.sdev;
                 }
             } else if (x.id > 0 and y.id < 0) {
-                const typename std::map<Id, Real>::const_iterator yit = y.sigma.find(x.id);
+                const MapIt yit = y.sigma.find(x.id);
                 if (yit != y.sigma.end()) {
                     cov += x.sdev * yit->second;
                 }
             } else if (x.id < 0 and y.id < 0) {
-                typename std::map<Id, Real>::const_iterator xit = x.sigma.begin();
-                typename std::map<Id, Real>::const_iterator yit = y.sigma.begin();
+                // This algorithm has a bad worst case: it should be
+                // O(min(Nx, Ny)) but imagine that Nx == 1 and that its id is
+                // past all the ids in y. Then all y is iterated before
+                // concluding they'are uncorrelated! If I iterate over the
+                // shorter one and search the longer one, it becomes
+                // O(min(Nx, Ny) log max(Nx, Ny)). I can do better if instead
+                // of simply incrementing of one step to reach the other
+                // iterator, I could search for it starting from where I am.
+                // Look in the reference for std::map, maybe there is
+                // something. I could even go beyond C++11 if needed.
+                MapIt xit = x.sigma.begin();
+                MapIt yit = y.sigma.begin();
                 while (xit != x.sigma.end() and yit != y.sigma.end()) {
                     const Id xid = xit->first;
                     const Id yid = yit->first;

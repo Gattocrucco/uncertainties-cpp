@@ -102,9 +102,19 @@ assume diagonal hessians. This would guarantee consistency since I'm modifying
 the function through which I propagate moments consistently across different
 moments.
 
-Are there tricks I can do by diagonalizing the Hessian? If I remember correctly
-diagonalizing is O(n^3), so it would not be helpful after all, if not eventually
-for the fourth order moments.
+What if I diagonalize the hessian? The way I'm writing the function is
+
+`f(x) = f0 + Gx + x^THx`
+
+where `x` is the variables column vector, `G` is the gradient, `H` is half the
+hessian. I diagonalize `H` so `H = U^TDU` (`H` is symmetrical so `U` is
+orthogonal). Then
+
+`f(x) = f0 + GU^TUx + (Ux)^TDUx`
+
+So I've reduced the hessian to diagonal, but I lost the indipendency assumption
+on the variables, which means that now all the moments are nontrivial. So it
+is not helpful.
 
 ### Construction
 

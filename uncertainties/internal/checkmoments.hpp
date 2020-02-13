@@ -46,6 +46,12 @@ namespace uncertainties {
         // Note this last formula will be negative, think of min_eigenvalue as
         // "max negative eigenvalue". So: 0 = ok, > 0 = definitely not ok,
         // < 0 = probably not ok, check that the number is small enough.
+        //
+        // We need to check if the matrix is positive semidefinite, and this can
+        // be faster than computing all the eigenvalues. However I think this
+        // is low priority since the matrix is 5x5. A possibly faster solution
+        // I already know is using Eigen's LDLT decomposition, but I would not
+        // know how to produce the thresholdable output with that.
         template<typename Real>
         Real hamburger(const HKMatrix<Real> &M) {
             Eigen::SelfAdjointEigenSolver<HKMatrix<Real>> solver(M, Eigen::EigenvaluesOnly);

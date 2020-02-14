@@ -1,3 +1,7 @@
+First of all, always remember the golden rules: before optimizing everything,
+find the bottlenecks on an array of concrete examples. And before optimizing
+everything, make the thing work.
+
 ## Generic
 
 See how to put package on homebrew.
@@ -8,6 +12,60 @@ interface could be implemented only at Python level. Possible name: YALSI for
 "Yet Another Least Squares Interface".
 
 ## UReal and UReal2
+
+### Inplace operations
+
+Implement `UReal2::binary_assign`.
+
+Think a sensible interface to allow inplace unary operations (implement
+`UReal(2)::unary_inplace`). (Second optional argument to all the unary
+functions in `math.hpp`? => No because they have to return something in one
+case and nothing in the other.)
+
+Expression templates. Is there something generic available? Should I prepare
+definitions for using it? Or would it be so straightforward that I would just
+need to give advice on it? It would be probably better to be self-contained
+since I guess it is not so difficult to implement.
+
+Expression templates ought to be extendible to user-defined functions.
+
+If I use expression templates, should I concatenate formulas getting directly
+the partial derivatives and then give them to `nary` instead of applying
+`binary` repeatedly?
+
+### Computing derivatives
+
+I'm using forward automatic differentiation. Would it be better to use backward
+differentiation? In neural networks backward is better because I have short
+output/long input and I already know that input will propagate through almost
+all nodes of the computational graph. Here it may not be the case, it may
+reasonably happen that nodes depend on separate sets of variables, so I guess
+forward mode is better, although it still holds that most usages I can think of
+have short output/long input. For now I will stick with forward mode because it
+is simpler and uses less memory. Although to make forward mode really efficient
+I need expression templates, which is the compile time equivalent of
+implementing backward differentiation. Although I have the impression backward
+mode is useful when I know already the set of variables over which I'm
+differentiating, which would require something like forward propagation to keep
+track of.
+
+Should I use hashmaps instead of trees? The advatage of trees is that I can take
+advantage of the implicit sorting when using two variables at a time, i.e. in
+binary operations and covariance computation. The point is if it is faster to
+merge hashmaps than trees, and if it is actually more memory efficient to use
+hashmaps since my data type is so small. The memory access sparsity is always
+bad with trees, while when I can iterate an hashmap without order (for example
+in unary operations) it may be less sparse. I need to check how C++ hashmaps
+work.
+
+### Testing
+
+Check higher order correlation functions using relations with lower order
+correlations if there are identical arguments.
+
+Do serious systematic tests of `UReal` interface, so that I can mess up freely.
+
+### Other
 
 Function to parse strings.
 
@@ -32,24 +90,11 @@ computation I'm doing because probably it is more efficient and handles
 unusual cases better. For example, probably the current implementation would
 fail if more digits than what 64 bit supports were requested.
 
-Expression templates. Is there something generic available? Should I prepare
-definitions for using it? Or would it be so straightforward that I would just
-need to give advice on it?
-
 Use balanced sum to compute the standard deviation of UReal, and the mean
 correction of UReal2? Maybe there is an efficient way since I'm already storing
 coefficients in trees.
 
 ## UReal2
-
-### Inplace operations
-
-Implement `UReal2::binary_assign`.
-
-Think a sensible interface to allow inplace unary operations (implement
-`UReal(2)::unary_inplace`). (Second optional argument to all the unary
-functions in `math.hpp`? => No because they have to return something in one
-case and nothing in the other.)
 
 ### Moment access interface redesign
 
@@ -87,8 +132,9 @@ constraint that indices can not take the same values. So I can write it as
 indices are O(n^3). Is there a way to exploit this ahead of expanding the
 series?
 
-For second order it is straightforward, I can do it by hand right now. It really
-is a game saver.
+For second order it is straightforward, I can do it by hand right now. Although
+the lower bound is O(n^2) which already is the complexity of second order, so
+it is just a constant factor optimization.
 
 The order is at least O(n^2) anyway because that's the size of hessians. This
 means that numerical precision is anyway a problem, a signifitive one if we are
@@ -100,7 +146,13 @@ diagonal terms of the hessian. If it turns out it is not possible in general
 to step down the O(n^k) complexity, it may still be that it is possible if I
 assume diagonal hessians. This would guarantee consistency since I'm modifying
 the function through which I propagate moments consistently across different
-moments.
+moments. By quick inspection, it appears that it is actually possible to stay
+O(n) if I ignore off-diagonal hessian. Is there a sort of mean-field
+approximation to sum off-diagonal terms into diagonal terms in O(n^2)? O(n^2)
+is the lower bound because it is the size of the hessian, so this is probably
+a difficult problem. It is easy to think about examples in which ignoring
+off-diagonal is bad, like xy, but I should check how often they happen in real
+life. Best case, it turns out in least squares is almost always fine to do that.
 
 What if I diagonalize the hessian? The way I'm writing the function is
 
@@ -160,16 +212,14 @@ Design a version of `ureals` for `UReal2`. Linear transformation? Same
 standardized moments for all variables? Or can I obtain arbitrary moments up
 to the fourth order with a quadratical transformation of independent variables?
 
-Check higher order correlation functions using relations with lower order
-correlations if there are identical arguments.
-
 Maximum entropy pdf given the moments. See R.V. Abramov 2010 paper. Question:
 doing maxentropy on only one variable is equivalent to doing on two and then
 marginalize?
 
 Fit with propagation like `lsqfit` but at second order. Do a generic wrapper
 of a least squares procedure. Look at lsqfit for how to diagonalize the data
-covariance matrix efficiently because it is O(n^3).
+covariance matrix efficiently because it is O(n^3), and I probably start with
+implicit block diagonal.
 
 In the documentation explain the bayesian-frequentist interpretation of
 propagation kind.

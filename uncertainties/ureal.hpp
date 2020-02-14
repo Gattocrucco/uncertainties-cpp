@@ -601,10 +601,24 @@ namespace uncertainties {
         by applying the function to the mean of `x`. The argument `dx` is the
         derivative of the function computed at the mean of `x`.
         */
-        friend UReal<Real> unary(const UReal<Real> &x, const Real mu, const Real &dx) {
+        friend UReal<Real> unary(const UReal<Real> &x, Real mu, const Real &dx) {
             UReal<Real> y;
             y.id = x.id;
             y.mu = std::move(mu);
+            // Here what I'm doing is copying the argument mu in the function
+            // call and then I move the copy into the result. This does not
+            // handle the case where the argument is an rvalue and I could move
+            // it two times instead of copy+move. Is there a way to handle
+            // the rvalue case without defining the function twice? Maybe if
+            // I add a template parameter RReal and do RReal &&mu. But this may
+            // lead to code bloat if the user passes different numerical types
+            // since the conversion would happen into the instantiated function.
+            // An inlined templated wrapper then? I don't have enough experience
+            // to judge if this is even relevant. Maybe the compiler optimizes
+            // away too many things. Or maybe it gets actually slower because
+            // the compiler is not so smart. Maybe for a small and commonly
+            // used function like this code bloat is not a problem. Anyway,
+            // this applies only when using multiprecision numbers!
             if (x.id > 0) {
                 y.sdev = x.sdev * dx;
             } else if (x.id < 0) {
@@ -634,6 +648,9 @@ namespace uncertainties {
             UReal<Real> z;
             z.id = invalid_id;
             z.mu = mu;
+            // Maybe here we could check the case x.id == y.id > 0 and handle
+            // that separately to make a no-heap z. It depends on how common are
+            // expressions like x * x * x.
             if (x.id > 0) {
                 z.sigma[x.id] = dx * x.sdev;
             } else if (x.id < 0 and y.id >= 0) {
@@ -649,9 +666,12 @@ namespace uncertainties {
                 }
             }
             if (x.id < 0 and y.id < 0) {
-                typename std::map<Id, Real>::const_iterator xit = x.sigma.begin();
-                typename std::map<Id, Real>::const_iterator yit = y.sigma.begin();
+                using MapIt = typename std::map<Id, Real>::const_iterator;
+                MapIt xit = x.sigma.begin();
+                MapIt yit = y.sigma.begin();
                 constexpr Id maxid = std::numeric_limits<Id>::max();
+                // This surely is not the best way to merge two trees. Search
+                // for what is the state of the art.
                 while (xit != x.sigma.end() or yit != y.sigma.end()) {
                     const Id xid = xit != x.sigma.end() ? xit->first : maxid;
                     const Id yid = yit != y.sigma.end() ? yit->first : maxid;
@@ -688,7 +708,7 @@ namespace uncertainties {
         [`xbegin`, `xend`) computed at their means.
         */
         template<typename XIt, typename DxIt>
-        friend UReal<Real> nary(XIt xbegin, XIt xend, const Real mu, DxIt dxbegin) {
+        friend UReal<Real> nary(XIt xbegin, XIt xend, Real mu, DxIt dxbegin) {
             UReal<Real> z;
             z.id = invalid_id;
             z.mu = std::move(mu);

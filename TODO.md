@@ -49,6 +49,14 @@ mode is useful when I know already the set of variables over which I'm
 differentiating, which would require something like forward propagation to keep
 track of.
 
+Wait a moment: I'm getting confused here. Am I doing forward or backward? I'm
+storing all the dependency at each step... So I'm building a computational
+graph. Is is just that I do not keep track of the actual functions, because I
+do not have to compute them on different inputs, i.e. it is like I'm building a
+graph of linear functions. The derivatives are accumulated forward, but maybe
+what I am really doing is backward prop? At each step I handle all the
+independent variables at once, so I think yes. Aaaagh.
+
 Should I use hashmaps instead of trees? The advatage of trees is that I can take
 advantage of the implicit sorting when using two variables at a time, i.e. in
 binary operations and covariance computation. The point is if it is faster to

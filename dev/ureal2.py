@@ -18,7 +18,9 @@ The output from first line (variance) is:
     2 H_ij H_ij V_iijj + 
     H_ii H_jj V_iijj
 G stands for gradient, H for half hessian, V for moment. The indices are summed
-over, with the constraint that different indices can not yield the same value.
+over, with the constraint that different indices can not yield the same value
+(but we are not summing over unique sets of indices, each index runs from
+start to finish).
 """
 
 SIMPL_V_REPR = False

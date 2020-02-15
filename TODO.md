@@ -35,37 +35,132 @@ the partial derivatives and then give them to `nary` instead of applying
 
 ### Computing derivatives
 
-I'm using forward automatic differentiation. Would it be better to use backward
-differentiation? In neural networks backward is better because I have short
-output/long input and I already know that input will propagate through almost
-all nodes of the computational graph. Here it may not be the case, it may
-reasonably happen that nodes depend on separate sets of variables, so I guess
-forward mode is better, although it still holds that most usages I can think of
-have short output/long input. For now I will stick with forward mode because it
-is simpler and uses less memory. Although to make forward mode really efficient
-I need expression templates, which is the compile time equivalent of
-implementing backward differentiation. Although I have the impression backward
-mode is useful when I know already the set of variables over which I'm
-differentiating, which would require something like forward propagation to keep
-track of.
+#### Summary
 
-Wait a moment: I'm getting confused here. Am I doing forward or backward? I'm
-storing all the dependency at each step... So I'm building a computational
-graph. Is is just that I do not keep track of the actual functions, because I
-do not have to compute them on different inputs, i.e. it is like I'm building a
-graph of linear functions. The derivatives are accumulated forward, but maybe
-what I am really doing is backward prop? At each step I handle all the
-independent variables at once, so I think yes. Aaaagh.
+  * Use `autograd` to write an initial proof-of-concept python library for
+    least squares with propagation only from inputs to output of single fit and
+    maxentropy done with `scipy`.
+    
+  * Write my own custom automatic differentiation in C++, doing both a forward
+    greedy like I'm doing now, and a backward with a computational graph made
+    naively with heap objects. Fw/bw is decided by the class, but for firsttime
+    users I could make it that udouble2 is aliased to one or the other based on
+    a macro.
 
-Should I use hashmaps instead of trees? The advatage of trees is that I can take
-advantage of the implicit sorting when using two variables at a time, i.e. in
-binary operations and covariance computation. The point is if it is faster to
-merge hashmaps than trees, and if it is actually more memory efficient to use
-hashmaps since my data type is so small. The memory access sparsity is always
-bad with trees, while when I can iterate an hashmap without order (for example
-in unary operations) it may be less sparse. I need to check how C++ hashmaps
-work.
+#### Forward implementation
 
+  * Do it greedily like I'm doing now, to keep things simple and low memory.
+
+  * Use expression templates: they are very important since otherwise for each
+    operation the entire gradient/hessian is copied.
+
+  * The approximation of computing only the hessian diagonal is decided by a
+    template parameter. The implementation is specialized since I can avoid
+    putting the out-of-diagonal hessian class variable.
+
+Should I use hashmaps instead of trees? The advatage of trees is that I can
+take advantage of the implicit sorting when using two variables at a time, i.e.
+in binary operations and covariance computation. The point is if it is faster
+to merge hashmaps than trees, and if it is actually more memory efficient to
+use hashmaps since my data type is so small. The memory access sparsity is
+always bad with trees, while when I can iterate an hashmap without order (for
+example in unary operations) it may be less sparse. I need to check how C++
+hashmaps work.
+
+#### Backward implementation
+
+Build the computational graph in a classic object oriented way. The variables
+hold a smart reference to a node in a graph, not necessarily the root. So if a
+higher graph level variable gets deleted, the subgraphs can remain alive. Since
+they can be shared this way, they are immutable for safety. Each node stores
+its partial derivatives. It's fully OO so I can have subclasses around with
+different class variables (example: a summation won't store a whole hessian
+matrix).
+
+The gradient/hessians use a sparse representation like I'm doing now with
+trees. Backward accumulation starts with a empty sparse gradient. If I am a
+node in the graph during accumulation, I get a factor from my parent, and then
+I ask each child to accumulate its derivatives multiplying by the factor I give
+them, and I give them my parent's factor multiplied by partial derivatives
+respect to them. Leaves do the actual accumulation, possibly adding a new
+element to the gradient. I still have to think about the hessian.
+
+When a node is directly requested to compute the gradient, it caches the
+result, so if afterwards a gradient evaluation is requested from higher-up, it
+just uses the cache.
+
+For efficiency it would be appropriate to fuse automatically some operations.
+Like if I do a summation of a lot of variables, it makes more sense to have a
+"summation" node than a deep tree of sums. But this contrasts with the policy
+of being able to access the graph at any point, so I have to make a fusing
+specialization on rvalues. But this could still break things if I move a
+variable that I already used as input to something, then the node would be fused
+without the other supergraph knowing about. I could mark with a bool the nodes
+and fuse only the true ones (the roots).
+
+#### Autodiff programs I have thought about
+
+I found most of them on [autodiff.org](http://www.autodiff.org). I concluded
+that none of them suits my interface needs, although of course for production
+code here there's more than one can hope for.
+
+  * `autograd`: can compute the hessian, but works on functions and needs the
+    input all at once in an array. I could use it just to implement propagation
+    on a single least squares fit in pure Python. It would be useful as a quick
+    to write starting point for the fitting interface. It could be also in
+    general be a "production" way of doing propagation: once my analysis is
+    fixed and I know all the input variables and all the outputs I care about,
+    I package everything in a function. This is not user friendly at all when
+    you are writing the code the first time and experimenting. The single least
+    squares implementation would also be useful for people who maybe don't care
+    at all about the general propagation stuff. Just a curve fitter with
+    bonuses. Technical advantage: it is no longer updated, but maintained, so
+    no surprise incompatibilities!
+    
+  * `tensorflow`: well it seems they are copying `autograd` these days, so
+    stick with `autograd`.
+
+  * `ADMB`: a huge framework! Not what I need.
+  
+  * `ADEL`: C++, hessian, backward. But not maintained, no documentation. Nope.
+    
+  * `adept`: C++, only first order, forward and backward. But it works context
+    dependent and I guess with the usual array gradient instead of sparse
+    like I need. Note: `FastAD` claims to be its far superior successor.
+  
+  * `adnumber`: C++, higher orders, expression tree. No doc, no maintain.
+    Probably not efficient.
+    
+  * `ADOL-C`: BOILERPLAAAAAATE and it is a large project.
+  
+  * `audi`: C++ and Python, higher orders, very cool... Still not well
+    documented. In the Python examples they add variables as they wish and then
+    require derivatives sparsily, and at each step it can be inspected, and the
+    comment says "no additional computations when we request the derivative",
+    which suggests forward prop. So I guess it is not very efficient for first
+    and second order, it is optimized for very high orders. Also, under heavy
+    development.
+    
+  * `autodiff_library`: hessian, fw & bw. You need to have the list of
+    variables to compute the gradient (not good). Mentions the "Edge_pushing
+    algorithm by Rober Gower" for backward full hessian, maybe look it up.
+  
+  * `CoDiPack`: C++, jacobian, hessian, fw, bw, higher orders, well documented,
+    currently maintained. The most promising C++ self-contained up to now. But
+    it still has the problem that you have to do either context-dependent
+    taping or pass a function, and the gradient is dense.
+
+  * `CppAD`: C++, jacobian, hessian, fw, bw, sparsity. As usual tape/function
+    behaviour, and seems less easy to use than CoDiPack, although it boasts
+    the additional feature of sparsity evaluation.
+    
+  * `CppADCodeGen`: version of `CppAD` that JITs with LLVM. So, nope again.
+  
+  * `FastAD`: C++17, easy to use, well maintained, claims to be verrry fast,
+    jac hes fw bw, but: usual pattern of known input-outputs.
+
+  * `libtaylor`: taylored to taylor... Very unconfortable API for my needs.
+  
 ### Testing
 
 Check higher order correlation functions using relations with lower order
@@ -81,8 +176,8 @@ In math functions with singularities in the derivative, check that the mean is
 not close to the singularity and warn the user on cerr. => No because it
 would require to compute the standard deviation at each step.
 
-Implement `numeric_limits`. In namespace `uncertainties` or `std`? Look for what
-`boost::mp` does and what `Eigen` expects.
+Implement `numeric_limits`. In namespace `uncertainties` or `std`? Look for
+what `boost::mp` does and what `Eigen` expects.
 
 Check if `UReal` works as user type to Eigen.
 
@@ -162,6 +257,8 @@ a difficult problem. It is easy to think about examples in which ignoring
 off-diagonal is bad, like xy, but I should check how often they happen in real
 life. Best case, it turns out in least squares is almost always fine to do that.
 
+#### Why hessian diagonalization does not help
+
 What if I diagonalize the hessian? The way I'm writing the function is
 
 `f(x) = f0 + Gx + x^THx`
@@ -175,6 +272,21 @@ orthogonal). Then
 So I've reduced the hessian to diagonal, but I lost the indipendency assumption
 on the variables, which means that now all the moments are nontrivial. So it
 is not helpful.
+
+#### Summary
+
+Vague deas I have up to now, in order of computational complexity:
+
+  * O(n): first order (baseline)
+
+  * O(n): only hessian diagonal
+
+  * O(n^2) derivatives, O(n) moments: in some way, sum out of diagonal terms
+    over the diagonal terms (I call this "mean field")
+
+  * O(n^2) or O(n^3): approximate the hessian. jacobian? effective jacobian?
+
+  * O(n^2) derivatives, O(n^k) moments: full computation
 
 ### Construction
 

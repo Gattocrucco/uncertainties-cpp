@@ -909,6 +909,13 @@ namespace uncertainties {
             const Real &dfdx, const Real &dfdy,
             const Real &ddfdxdx, const Real &ddfdydy, const Real &ddfdxdy
         ) {
+            // THIS FUNCTION IS NOT FINISHED! It modifies x and then reads
+            // it again... how do I do this?
+            // O(n) fix: the first part walks in order the hessian. It never
+            // happens that a hessian element is required to compute the hessian
+            // element at a different coordinate. So I can save x's gradient
+            // beforehand in an array.
+            
             x.mu = fxy;
 
             constexpr Id maxid = std::numeric_limits<Id>::max();

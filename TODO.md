@@ -15,12 +15,13 @@ interface could be implemented only at Python level. Possible name: YALSI for
 
 ### Inplace operations
 
-Implement `UReal2::binary_assign`.
+Finish implementing `UReal2::binary_assign`.
 
 Think a sensible interface to allow inplace unary operations (implement
 `UReal(2)::unary_inplace`). (Second optional argument to all the unary
 functions in `math.hpp`? => No because they have to return something in one
-case and nothing in the other.)
+case and nothing in the other.) This may not be needed if I implement
+expression templates.
 
 Expression templates. Is there something generic available? Should I prepare
 definitions for using it? Or would it be so straightforward that I would just
@@ -94,9 +95,10 @@ Like if I do a summation of a lot of variables, it makes more sense to have a
 "summation" node than a deep tree of sums. But this contrasts with the policy
 of being able to access the graph at any point, so I have to make a fusing
 specialization on rvalues. But this could still break things if I move a
-variable that I already used as input to something, then the node would be fused
-without the other supergraph knowing about. I could mark with a bool the nodes
-and fuse only the true ones (the roots).
+variable that I already used as input to something, then the node would be
+fused without the other supergraph knowing about. I could mark with a bool the
+nodes and fuse only the true ones (the roots). It is also convenient to fuse 1D
+to 1D operations, i.e. compute the product of derivatives directly.
 
 #### Autodiff programs I have thought about
 
@@ -221,45 +223,41 @@ computational complexity.
 
 Don't forget all this applies also to cov and corr.
 
-### Moment computation efficiency
+### Moment computation optimization
 
-Other problem with O(n^4): since the number of terms summed is large, the
-numerical precision is low. Example: with 1000 variables, it's 10^12 terms,
-so it is a problem even for a double.
+Ideas I have up to now, in order of computational complexity:
 
-Idea for O(n^4): is there a way to simplify expressions? For example in the 4th
-moment the last term is `H_ii H_jj H_kk H_ll V_iijjkkll`, which actually just
-amounts to `H_ii H_jj H_kk H_ll` in computations. The summation is with the
-constraint that indices can not take the same values. So I can write it as
-`(sum_i H_ii)^4 - (terms with overlapping indices)`. The terms with overlapping
-indices are O(n^3). Is there a way to exploit this ahead of expanding the
-series?
+  * O(n): first order (baseline).
 
-For second order it is straightforward, I can do it by hand right now. Although
-the lower bound is O(n^2) which already is the complexity of second order, so
-it is just a constant factor optimization.
+  * O(n): compute and use only hessian diagonal. Collect terms in the
+    moment summation, example: `∑_i≠j H_ii H_jj = (∑_i H_ii)^2 - ∑_i H_ii^2`.
 
-The order is at least O(n^2) anyway because that's the size of hessians. This
-means that numerical precision is anyway a problem, a signifitive one if we are
-using float. I can already see that the O(n^2) terms in the variance and
-covariance could be computed with tree summation.
+  * O(n^2): in some way, sum off-diagonal hessian terms over the diagonal terms
+    (I call this "mean field").
 
-Idea: the O(n^2) terms in variance and covariance are those that contain out of
-diagonal terms of the hessian. If it turns out it is not possible in general
-to step down the O(n^k) complexity, it may still be that it is possible if I
-assume diagonal hessians. This would guarantee consistency since I'm modifying
-the function through which I propagate moments consistently across different
-moments. By quick inspection, it appears that it is actually possible to stay
-O(n) if I ignore off-diagonal hessian. Is there a sort of mean-field
-approximation to sum off-diagonal terms into diagonal terms in O(n^2)? O(n^2)
-is the lower bound because it is the size of the hessian, so this is probably
-a difficult problem. It is easy to think about examples in which ignoring
-off-diagonal is bad, like xy, but I should check how often they happen in real
-life. Best case, it turns out in least squares is almost always fine to do that.
+  * O(n^2) derivatives, O(n^2 m) moments: rank m approximation of the hessian
+    (I'm assuming that computing the rank approximation also is O(n^2 m)).
+
+  * O(n^2) derivatives, O(n^k) moments: full computation. I do not exclude
+    there is a way to reduce the O(n^k) but I suspect no.
+
+#### Numerical error
+
+For a O(n^2) computation, I guess the digits I lose are as many as the digits
+of n. Example: 10000 variables, I use floats, I lose 5 out digits of 7. This
+assuming a random behaviour with the result always on the order of the
+operands. So I should care about using good summation algorithms, probably
+having the out of diagonal hessian in its own tree I should use binary
+summation. At least, I'm sure I can do this for second order moments, I don't
+know for higher ones.
+
+A O(n^4) computation may be problematic even for a double, but when it becomes
+so long I think the first problem is computational time, since then it would be
+hugely convenient to do a monte carlo.
 
 #### Why hessian diagonalization does not help
 
-What if I diagonalize the hessian? The way I'm writing the function is
+What if I diagonalize the hessian? The way I'm approximating the function is
 
 `f(x) = f0 + Gx + x^THx`
 
@@ -275,19 +273,6 @@ is not helpful.
 
 #### Summary
 
-Vague deas I have up to now, in order of computational complexity:
-
-  * O(n): first order (baseline)
-
-  * O(n): only hessian diagonal
-
-  * O(n^2) derivatives, O(n) moments: in some way, sum out of diagonal terms
-    over the diagonal terms (I call this "mean field")
-
-  * O(n^2) or O(n^3): approximate the hessian. jacobian? effective jacobian?
-
-  * O(n^2) derivatives, O(n^k) moments: full computation
-
 ### Construction
 
 Move `std_moments` and `central_moments` to `UReal2` constructor with option to
@@ -295,36 +280,26 @@ center moments.
 
 Should I allow a negative threshold in the construction of UReal2 with this
 meaning: that moments close to the boundary of allowed moments shall be
-refused?
+refused? Because maybe then it happens that the output moments can fall past
+the boundary or give numerical problems anyway. If I do that, I guess I should
+remove altogether the possibility of allowing numerically past-the-boundary
+moments? But it may be interesting to, say, input a bunch of deltas in the
+computation and see what comes out, since then results are probably analytical.
+Idea: I can always perturbate output moments if they turn out nonsensical, this
+works in general while hoping that input ok => output ok may fail.
 
 ### Missing higher order functionality
 
 Third and fourth order correlation functions (automatical generation). Do it
-first storing all ids and coefficients in arrays then iterating?
+first storing all ids and coefficients in arrays then iterating? Reconsider
+this after I've implemented efficient moment computation.
 
-Implement bias correction for higher order moments.
-
-Ma ha veramente senso fare la propagazione unbiased per i momenti superiori?
-Anzi di solito è roba positiva di cui voglio una stima positiva, insomma una
-stima "bayesiana" (pensa i casini quando devi fare la media pesata e la matrice
-di covarianza non è definita positiva). Idem per la curtosi immagino. Fare la
-stima unbiased sembra una questione di completezza delle funzionalità del
-software ma probabilmente non è quello che la gente dovrebbe fare, e questo è
-uno dei miei requisiti, far fare cose sensate agli utenti. Inoltre altrimenti
-per avere stima unbiased insieme a stima bayesiana dei momenti superiori dovrei
-aggiungere parametri, complicando l'interfaccia e la comprensibilità del
-codice. Tutti questi casini esistono per colpa dei frequentisti, però il bias
-in vari casi è utile perché è una cosa che tende a conservarsi. Però comunque
-mi rimane il problema che nel caso "correzione del bias" devo dare i momenti
-superiori che tengono conto della correzione che c'ha la sua distribuzione
-dopotutto. Va bene quello che sto già facendo o sbucano dei termini? E come
-sbucano? E fanno venire positive le cose che devono essere positive?
-
-Non è che per magia per correggere il bias anziché propagare mi basta fare il
-ricentramento con la correzione al contrario? (mi sa che me l'ero già chiesto e
-la risposta era no). Dunque: la correzione nel centrare la varianza compare al
-quadrato quindi no spero comunque che in qualche modo ci sia un trucco magico
-perché altrimenti devo riscrivere a mano di nuovo tutta la serie.
+Implement bias correction for higher order moments. In the sense that I compute
+to second order the unbiased estimates of the moments of the bias corrected
+estimator. This means that they can come out non positive definite. Is there a
+way to do non-unbiased estimates for the bias corrected estimator that are
+positive definite and still better than bare propagation? The truth is I do not
+want to write the CAS for these new more complicated series and implement them.
 
 ### Other
 

@@ -1,15 +1,44 @@
+# TODO for uncertainties-cpp
+
 First of all, always remember the golden rules: before optimizing everything,
 find the bottlenecks on an array of concrete examples. And before optimizing
 everything, make the thing work.
 
-## Generic
+## Roadmap
+
+  * Implement a pure python version with `autograd` and `scipy`. Name: YALSI
+    for Yet Another Least Squares Interface. Features: moment propagation with
+    diagonal hessian, using full function specification (because we are using
+    `autograd`), least squares with propagation from input to output, but it
+    can be used as function in an `autograd` graph, and finally maxentropy.
+    Possible icon: a gradient bimodal in a circle of radial errorbars.
+ 
+  * Complete the test suite and fix the interface issues in UReal2.
+  
+  * Implement a sensible internal interface in UReal2 for computing the moments
+    with different algorithms. First store gradient and hessian in Eigen
+    matrices, apart from simple algorithms that can just iterate once on
+    everything (like, I guess, diagonal hessian approx).
+  
+  * Implement diagonal hessian approx. Maybe use subclassing with superclass
+    doing diagonal and subclass full so there is less template code bloat.
+  
+  * Write python wrapper with `pybind11`.
+  
+  * Add mutiple variable higher order moments.
+  
+  * Port Abramov's code for maxentropy.
+  
+  * Implement expression templates.
+  
+  * Implement computational graph type. How do I separate between first and
+    second order without repeating code and without code bloat?
+
+## Packaging
 
 See how to put package on homebrew.
 
-Python interface. Use pybind11. The name of the module should probably be
-different, because of my poor initial choice. Maybe the non-agnostic fitting
-interface could be implemented only at Python level. Possible name: YALSI for
-"Yet Another Least Squares Interface".
+Python interface. Use pybind11.
 
 ## UReal and UReal2
 
@@ -36,17 +65,11 @@ the partial derivatives and then give them to `nary` instead of applying
 
 ### Computing derivatives
 
-#### Summary
-
-  * Use `autograd` to write an initial proof-of-concept python library for
-    least squares with propagation only from inputs to output of single fit and
-    maxentropy done with `scipy`.
-    
-  * Write my own custom automatic differentiation in C++, doing both a forward
-    greedy like I'm doing now, and a backward with a computational graph made
-    naively with heap objects. Fw/bw is decided by the class, but for firsttime
-    users I could make it that udouble2 is aliased to one or the other based on
-    a macro.
+Write my own custom automatic differentiation in C++, doing both a forward
+greedy like I'm doing now, and a backward with a computational graph made
+naively with heap objects. Fw/bw is decided by the class, but for firsttime
+users I could make it that udouble2 is aliased to one or the other based on a
+macro.
 
 #### Forward implementation
 
@@ -106,18 +129,10 @@ I found most of them on [autodiff.org](http://www.autodiff.org). I concluded
 that none of them suits my interface needs, although of course for production
 code here there's more than one can hope for.
 
-  * `autograd`: can compute the hessian, but works on functions and needs the
-    input all at once in an array. I could use it just to implement propagation
-    on a single least squares fit in pure Python. It would be useful as a quick
-    to write starting point for the fitting interface. It could be also in
-    general be a "production" way of doing propagation: once my analysis is
-    fixed and I know all the input variables and all the outputs I care about,
-    I package everything in a function. This is not user friendly at all when
-    you are writing the code the first time and experimenting. The single least
-    squares implementation would also be useful for people who maybe don't care
-    at all about the general propagation stuff. Just a curve fitter with
-    bonuses. Technical advantage: it is no longer updated, but maintained, so
-    no surprise incompatibilities!
+  * **`autograd`**: any order derivatives, backward & forward, pure python. But
+    it is difficult to adapt it efficiently to an `uncertainties`-like
+    interface, it wants all the input at a time, so I would have to build a
+    computational graph and then accumulate all the unique inputs.
     
   * `tensorflow`: well it seems they are copying `autograd` these days, so
     stick with `autograd`.
@@ -147,7 +162,7 @@ code here there's more than one can hope for.
     variables to compute the gradient (not good). Mentions the "Edge_pushing
     algorithm by Rober Gower" for backward full hessian, maybe look it up.
   
-  * `CoDiPack`: C++, jacobian, hessian, fw, bw, higher orders, well documented,
+  * **`CoDiPack`**: C++, jacobian, hessian, fw, bw, higher orders, well documented,
     currently maintained. The most promising C++ self-contained up to now. But
     it still has the problem that you have to do either context-dependent
     taping or pass a function, and the gradient is dense.
@@ -158,7 +173,7 @@ code here there's more than one can hope for.
     
   * `CppADCodeGen`: version of `CppAD` that JITs with LLVM. So, nope again.
   
-  * `FastAD`: C++17, easy to use, well maintained, claims to be verrry fast,
+  * **`FastAD`**: C++17, easy to use, well maintained, claims to be verrry fast,
     jac hes fw bw, but: usual pattern of known input-outputs.
 
   * `libtaylor`: taylored to taylor... Very unconfortable API for my needs.
@@ -169,6 +184,9 @@ Check higher order correlation functions using relations with lower order
 correlations if there are identical arguments.
 
 Do serious systematic tests of `UReal` interface, so that I can mess up freely.
+
+The test I'm doing in `distr.cpp` is on a degenerate rank 1 hessian. It is
+possible that this gets fooled, although I guess not.
 
 ### Other
 
@@ -199,7 +217,7 @@ Use balanced sum to compute the standard deviation of UReal, and the mean
 correction of UReal2? Maybe there is an efficient way since I'm already storing
 coefficients in trees.
 
-## UReal2
+## UReal2 only
 
 ### Moment access interface redesign
 
@@ -225,21 +243,55 @@ Don't forget all this applies also to cov and corr.
 
 ### Moment computation optimization
 
-Ideas I have up to now, in order of computational complexity:
+Ideas I have up to now, in order of computational complexity (`n` is the number
+of independent variables). Note that the number of terms in moment computation
+grows quickly with order `k` and I'm ignoring that, there's always something
+like `k!` in the moment computation.
 
   * O(n): first order (baseline).
 
   * O(n): compute and use only hessian diagonal. Collect terms in the
-    moment summation, example: `∑_i≠j H_ii H_jj = (∑_i H_ii)^2 - ∑_i H_ii^2`.
+    moment summation, example: `∑i≠j Hii Hjj = (∑i Hii)^2 - ∑i Hii^2`.
 
-  * O(n^2): in some way, sum off-diagonal hessian terms over the diagonal terms
-    (I call this "mean field").
+  * O(n^2) derivatives, O(n^2) transform, O(n) moments: in some way, sum
+    off-diagonal hessian terms over the diagonal terms (I call this "mean
+    field"). The trace should be preserved because it gives the bias
+    correction. Basic idea: `Hii -> ∑j Hij - 1/n ∑j≠k Hjk`. Intuitively this
+    reweights the variables but won't increase the variance as it should. Think
+    in 2D the case `H11 = H22 = 0`, `H12 = 1`. The transformation would give
+    `H = 0`! But if I allowed the trace to vary, then the bias would be nonzero,
+    which violates the symmetry.
 
-  * O(n^2) derivatives, O(n^2 m) moments: rank m approximation of the hessian
-    (I'm assuming that computing the rank approximation also is O(n^2 m)).
-
+  * O(n^2) derivatives, O(n^2 m) transform, O(n m^k) moments: trace preserving
+    rank m approximation of the hessian. Problematic example from above: the
+    eigenvalues are 1 and -1. The eigenvectors are `[1 1]`, `[1 -1]`. Their
+    outer products are `[1 1; 1 1]` and `[1 -1; -1 1]`. If I want to make
+    either with zero trace with a scaling, again I obtain `H = 0`. I guess when
+    the trace is zero there's no way around than having `H = 0` if I'm linear.
+    
   * O(n^2) derivatives, O(n^k) moments: full computation. I do not exclude
     there is a way to reduce the O(n^k) but I suspect no.
+
+Does mean field makes sense really? And is there a O(n^2) way to decide if it
+is better to use the diagonal or a lower rank?
+
+#### Computing the lower rank approximation
+
+How should I pick the m eigenvalues in general?
+
+m = 1 case: I have to preserve the trace and it makes sense to preserve the
+curvature sign in the direction I pick, so choose the maximum absolute value
+eigenvalue with same sign of the trace.
+
+For general m: find the first as in the m = 1 case, subtract from the trace,
+and so on.
+
+The algorithm I should use is Lanczos. I read that it is not stable to go on
+finding eigenvalues with Lanczos, but I guess it is fine if I search just a
+few. The only implementation I can use I found is `lambda-lanczos`: C++11,
+header-only, not released but they make tests and write doc, so I bet I can
+trust them. The alternative is to implement it myself, it should not be too
+difficult.
 
 #### Numerical error
 
@@ -270,8 +322,6 @@ orthogonal). Then
 So I've reduced the hessian to diagonal, but I lost the indipendency assumption
 on the variables, which means that now all the moments are nontrivial. So it
 is not helpful.
-
-#### Summary
 
 ### Construction
 
@@ -319,20 +369,5 @@ implicit block diagonal.
 In the documentation explain the bayesian-frequentist interpretation of
 propagation kind.
 
-nella propagazione al secondo ordine riesco a fare qualcosa che in qualche
-senso approssima risultati bayesiani? tipo come lsqfit che si considera
-bayesiano in approssimazione gaussiana. allora: la propagazione di tipo M è
-quella da usare per propagare i momenti di un posteriore. però si applica al
-fit ai minimi quadrati? cioè, posso considerare il fit ai minimi quadrati come
-un'approssimazione della media del posteriore (e quindi quando è biased dire e
-sticazzi?) minimi quadrati mi dà la moda del posteriore assumendo che dati e
-priori siano gaussiani. assumendo che il posteriore sia gaussiano, mi dà allora
-la media. se voglio andare al secondo ordine cosa devo fare? non minimi
-quadrati ma minimo log p? È impraticabile perché per ricavare log p dai momenti
-dovrei fare maxentropy che è computazionalmente infattibile. se io faccio
-minimi quadrati e poi propago M, quello che sto facendo è approssimare la media
-del posteriore? Non vedo direttamente perché, però il fatto che non facendo
-nulla ho il primo ordine, e che facendo propagazione E ho effettivamente la
-correzione del bias, mi suggerisce che facendo propagazione M sto stimando la
-media del posteriore.
-
+Least squares with second order propagation as approximate bayesian inference?
+Check this empirically.

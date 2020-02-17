@@ -286,12 +286,21 @@ eigenvalue with same sign of the trace.
 For general m: find the first as in the m = 1 case, subtract from the trace,
 and so on.
 
-The algorithm I should use is Lanczos. I read that it is not stable to go on
-finding eigenvalues with Lanczos, but I guess it is fine if I search just a
-few. The only implementation I can use I found is `lambda-lanczos`: C++11,
-header-only, not released but they make tests and write doc, so I bet I can
-trust them. The alternative is to implement it myself, it should not be too
-difficult.
+The algorithm I should use is Lanczos. C++ header only implementations I found:
+
+  * `lambda-lanczos`: very small and simple. Not really a supported project.
+    I would use it to implement directly my algorithm by finding an eigenvalue
+    at a time and each time I subtract it from the matrix.
+  
+  * `spectra`: a large library based on Eigen, a port of ARPACK. I could use
+    it this way: I ask for 2m eigenvalues with option BOTH_ENDS, so in the
+    extreme case where I need all eigenvalues with the same sign I surely have
+    m of them.
+
+I guess I'll go with the second, mainly because what I write by hand is less
+dependable than well-tested algorithms. Don't forget to check if it is actually
+faster to do a full diagonalization than using this! There will be a threshold
+on the matrix size.
 
 #### Numerical error
 

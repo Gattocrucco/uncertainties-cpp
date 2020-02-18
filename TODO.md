@@ -82,14 +82,13 @@ macro.
     template parameter. The implementation is specialized since I can avoid
     putting the out-of-diagonal hessian class variable.
 
-Should I use hashmaps instead of trees? The advatage of trees is that I can
-take advantage of the implicit sorting when using two variables at a time, i.e.
-in binary operations and covariance computation. The point is if it is faster
-to merge hashmaps than trees, and if it is actually more memory efficient to
-use hashmaps since my data type is so small. The memory access sparsity is
-always bad with trees, while when I can iterate an hashmap without order (for
-example in unary operations) it may be less sparse. I need to check how C++
-hashmaps work.
+Should I use hashmaps instead of trees? The memory access is not better because
+`std::unordered_map` is implemented with pointers. And I lose ordered access,
+which is useful when merging.
+
+Other alternative: use Eigen's sparse matrices. The problems are that the
+storage is not completely ordered, it is inefficient to grow one element at a
+time, and size must be specified.
 
 #### Backward implementation
 
@@ -119,9 +118,10 @@ Like if I do a summation of a lot of variables, it makes more sense to have a
 of being able to access the graph at any point, so I have to make a fusing
 specialization on rvalues. But this could still break things if I move a
 variable that I already used as input to something, then the node would be
-fused without the other supergraph knowing about. I could mark with a bool the
-nodes and fuse only the true ones (the roots). It is also convenient to fuse 1D
-to 1D operations, i.e. compute the product of derivatives directly.
+fused without the other supergraph knowing about. Since I would be using smart
+pointers, use `use_count()` to check if the node in uniquely owned (not thread
+safe though). It is also convenient to fuse 1D to 1D operations, i.e. compute
+the product of derivatives directly.
 
 #### Autodiff programs I have thought about
 
@@ -173,8 +173,8 @@ code here there's more than one can hope for.
     
   * `CppADCodeGen`: version of `CppAD` that JITs with LLVM. So, nope again.
   
-  * **`FastAD`**: C++17, easy to use, well maintained, claims to be verrry fast,
-    jac hes fw bw, but: usual pattern of known input-outputs.
+  * **`FastAD`**: C++17, easy to use, well maintained, claims to be verrry
+    fast, jac hes fw bw, but: usual pattern of known input-outputs.
 
   * `libtaylor`: taylored to taylor... Very unconfortable API for my needs.
   

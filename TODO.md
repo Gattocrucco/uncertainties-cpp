@@ -13,15 +13,16 @@ everything, make the thing work.
     can be used as function in an `autograd` graph, and finally maxentropy.
     Possible icon: a gradient bimodal in a circle of radial errorbars.
  
-  * Complete the test suite and fix the interface issues in UReal2.
+  * Complete the test suite and fix the interface and code bloat issues in
+    UReal2.
   
   * Implement a sensible internal interface in UReal2 for computing the moments
     with different algorithms. First store gradient and hessian in Eigen
     matrices, apart from simple algorithms that can just iterate once on
     everything (like, I guess, diagonal hessian approx).
   
-  * Implement diagonal hessian approx. Maybe use subclassing with superclass
-    doing diagonal and subclass full so there is less template code bloat.
+  * Implement diagonal hessian approx. Superclass does diagonal, subclass does
+    full.
   
   * Write python wrapper with `pybind11`.
   
@@ -31,14 +32,13 @@ everything, make the thing work.
   
   * Implement expression templates.
   
-  * Implement computational graph type. How do I separate between first and
-    second order without repeating code and without code bloat?
+  * Implement computational graph type.
 
 ## Packaging
 
 See how to put package on homebrew.
 
-Python interface. Use pybind11.
+Python interface. Use `pybind11`.
 
 ## UReal and UReal2
 
@@ -78,18 +78,10 @@ macro.
   * Use expression templates: they are very important since otherwise for each
     operation the entire gradient/hessian is copied.
 
-  * The approximation of computing only the hessian diagonal is decided by a
-    template parameter. The implementation is specialized since I can avoid
-    putting the out-of-diagonal hessian class variable.
-
-Should I use hashmaps instead of trees? The memory access is not better because
-`std::unordered_map` is implemented with pointers. And I lose ordered access,
-which is useful when merging.
-
-Other alternative: use Eigen's sparse matrices. The problems are that the
-storage is not completely ordered, it is inefficient to grow one element at a
-time, and size must be specified.
-
+  * There is a `UReal2` class that computes only the hessian diagonal and a
+    subclass that does full hessian, since in the first case I can avoid
+    storing the out-of-diagonal map.
+    
 #### Backward implementation
 
 Build the computational graph in a classic object oriented way. The variables
@@ -100,17 +92,27 @@ its partial derivatives. It's fully OO so I can have subclasses around with
 different class variables (example: a summation won't store a whole hessian
 matrix).
 
-The gradient/hessians use a sparse representation like I'm doing now with
-trees. Backward accumulation starts with a empty sparse gradient. If I am a
-node in the graph during accumulation, I get a factor from my parent, and then
-I ask each child to accumulate its derivatives multiplying by the factor I give
-them, and I give them my parent's factor multiplied by partial derivatives
-respect to them. Leaves do the actual accumulation, possibly adding a new
-element to the gradient. I still have to think about the hessian.
+The gradient uses a sparse representation like I'm doing now with trees.
+Backward accumulation starts with a empty sparse gradient. If I am a node in
+the graph during accumulation, I get a factor from my parent, and then I ask
+each child to accumulate its derivatives multiplying by the factor I give them,
+and I give them my parent's factor multiplied by partial derivatives respect to
+them. Leaves do the actual accumulation, possibly adding a new element to the
+gradient.
+
+Doing backward the hessian this way is not possible because in a non-unary node
+the off diagonal terms in the partial hessian need accumulation with the
+product of the gradients of two different nodes. Doing the hessian backward
+effectively means doing the backward gradient of the forward gradient, so it is
+not quite efficient. Look at the stochastic hessian estimation from 1206.6464,
+they claim to reduce the computational complexity while achieving reasonable
+precision.
 
 When a node is directly requested to compute the gradient, it caches the
 result, so if afterwards a gradient evaluation is requested from higher-up, it
-just uses the cache.
+just uses the cache. Example where this is very useful: I do a fit, and then
+use the fit result to compute the model prediction at many points to draw a
+plot.
 
 For efficiency it would be appropriate to fuse automatically some operations.
 Like if I do a summation of a lot of variables, it makes more sense to have a
@@ -120,8 +122,18 @@ specialization on rvalues. But this could still break things if I move a
 variable that I already used as input to something, then the node would be
 fused without the other supergraph knowing about. Since I would be using smart
 pointers, use `use_count()` to check if the node in uniquely owned (not thread
-safe though). It is also convenient to fuse 1D to 1D operations, i.e. compute
-the product of derivatives directly.
+safe though). It is also convenient to fuse unary operations, i.e. compute the
+product of derivatives directly.
+
+#### Alternatives to `std::map`
+
+Should I use hashmaps instead of trees? The memory access is not better because
+`std::unordered_map` is implemented with pointers. And I lose ordered access,
+which is useful when merging.
+
+Other alternative: use Eigen's sparse matrices. The problems are that the
+storage is not completely ordered, it is inefficient to grow one element at a
+time, and size must be specified.
 
 #### Autodiff programs I have thought about
 
@@ -300,7 +312,7 @@ The algorithm I should use is Lanczos. C++ header only implementations I found:
 I guess I'll go with the second, mainly because what I write by hand is less
 dependable than well-tested algorithms. Don't forget to check if it is actually
 faster to do a full diagonalization than using this! There will be a threshold
-on the matrix size.
+on the matrix size. Also: should I use SVD?
 
 #### Numerical error
 
@@ -380,3 +392,8 @@ propagation kind.
 
 Least squares with second order propagation as approximate bayesian inference?
 Check this empirically.
+
+Avoid code bloat by putting shared functionality in a superclass
+`UReal2Base<Real>` and the subclassing to `UReal2E` and `UReal2P`. Because
+actually all the difference now is only in the function `n` and in conversion
+rules.

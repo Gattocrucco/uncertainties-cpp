@@ -106,7 +106,8 @@ product of the gradients of two different nodes. Doing the hessian backward
 effectively means doing the backward gradient of the forward gradient, so it is
 not quite efficient. Look at the stochastic hessian estimation from 1206.6464,
 they claim to reduce the computational complexity while achieving reasonable
-precision.
+precision. Also: JAX's README makes the example of computing the hessian doing
+fw grad of bw grad.
 
 When a node is directly requested to compute the gradient, it caches the
 result, so if afterwards a gradient evaluation is requested from higher-up, it
@@ -141,6 +142,9 @@ I found most of them on [autodiff.org](http://www.autodiff.org). I concluded
 that none of them suits my interface needs, although of course for production
 code here there's more than one can hope for.
 
+  * **`AlgoPy`**: check this out since `autograd` is very slow with hessians
+    and `JAX` is still not stable. Interface provided in `numdifftools`.
+    
   * **`autograd`**: any order derivatives, backward & forward, pure python. But
     it is difficult to adapt it efficiently to an `uncertainties`-like
     interface, it wants all the input at a time, so I would have to build a
@@ -394,6 +398,4 @@ Least squares with second order propagation as approximate bayesian inference?
 Check this empirically.
 
 Avoid code bloat by putting shared functionality in a superclass
-`UReal2Base<Real>` and the subclassing to `UReal2E` and `UReal2P`. Because
-actually all the difference now is only in the function `n` and in conversion
-rules.
+`UReal2Base<Real>` and then subclassing to `UReal2<Real, prop>`.

@@ -233,6 +233,13 @@ Use balanced sum to compute the standard deviation of UReal, and the mean
 correction of UReal2? Maybe there is an efficient way since I'm already storing
 coefficients in trees.
 
+Use central differences for numerical first derivatives, and use step =
+cbrt(eps).
+
+Remove `isnormal` because it does not make sense and implement `isfinite` in
+the same way for `UReal` and `UReal2`, explaining the caveat that if overflow
+occurs the final results may not be finite actually.
+
 ## UReal2 only
 
 ### Moment access interface redesign
@@ -376,11 +383,16 @@ way to do non-unbiased estimates for the bias corrected estimator that are
 positive definite and still better than bare propagation? The truth is I do not
 want to write the CAS for these new more complicated series and implement them.
 
-### Other
+### Producing variables with given moments
 
 Design a version of `ureals` for `UReal2`. Linear transformation? Same
 standardized moments for all variables? Or can I obtain arbitrary moments up
 to the fourth order with a quadratical transformation of independent variables?
+
+Obtain normalization of a variable given its moments, in the sense of applying
+a transformation that gives a gaussian distributed statistics.
+
+### Other
 
 Maximum entropy pdf given the moments. See R.V. Abramov 2010 paper. Question:
 doing maxentropy on only one variable is equivalent to doing on two and then
@@ -391,11 +403,21 @@ of a least squares procedure. Look at lsqfit for how to diagonalize the data
 covariance matrix efficiently because it is O(n^3), and I probably start with
 implicit block diagonal.
 
-In the documentation explain the bayesian-frequentist interpretation of
-propagation kind.
-
 Least squares with second order propagation as approximate bayesian inference?
 Check this empirically.
 
 Avoid code bloat by putting shared functionality in a superclass
 `UReal2Base<Real>` and then subclassing to `UReal2<Real, prop>`.
+
+
+## Documentation
+
+For second order explain the bayesian-frequentist interpretation of propagation
+kind.
+
+In `functions.hpp` replace "automatical derivatives" with "numerical
+derivatives", and explain that default steps are ok under the condition
+`|f/f'| <~ 1`.
+
+The theoretical explanation for `UReal2` clutters the reference, move it to a
+separate page.

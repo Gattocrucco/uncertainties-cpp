@@ -238,7 +238,8 @@ cbrt(eps).
 
 Remove `isnormal` because it does not make sense and implement `isfinite` in
 the same way for `UReal` and `UReal2`, explaining the caveat that if overflow
-occurs the final results may not be finite actually.
+occurs the final results may not be finite actually. Remove the public function
+`all` and implement `isfinite` as friend function in the class file.
 
 ## UReal2 only
 
@@ -286,17 +287,13 @@ like `k!` in the moment computation.
     which violates the symmetry.
 
   * O(n^2) derivatives, O(n^2 m) transform, O(n m^k) moments: trace preserving
-    rank m approximation of the hessian. Problematic example from above: the
-    eigenvalues are 1 and -1. The eigenvectors are `[1 1]`, `[1 -1]`. Their
-    outer products are `[1 1; 1 1]` and `[1 -1; -1 1]`. If I want to make
-    either with zero trace with a scaling, again I obtain `H = 0`. I guess when
-    the trace is zero there's no way around than having `H = 0` if I'm linear.
+    rank m approximation of the hessian.
     
   * O(n^2) derivatives, O(n^k) moments: full computation. I do not exclude
     there is a way to reduce the O(n^k) but I suspect no.
 
 Does mean field makes sense really? And is there a O(n^2) way to decide if it
-is better to use the diagonal or a lower rank?
+is better to use the diagonal or a lower rank? Or: can I combine them?
 
 #### Computing the lower rank approximation
 
@@ -328,7 +325,7 @@ on the matrix size. Also: should I use SVD?
 #### Numerical error
 
 For a O(n^2) computation, I guess the digits I lose are as many as the digits
-of n. Example: 10000 variables, I use floats, I lose 5 out digits of 7. This
+of n. Example: 10000 variables, I use floats, I lose 5 digits out of 7. This
 assuming a random behaviour with the result always on the order of the
 operands. So I should care about using good summation algorithms, probably
 having the out of diagonal hessian in its own tree I should use binary
@@ -398,17 +395,8 @@ Maximum entropy pdf given the moments. See R.V. Abramov 2010 paper. Question:
 doing maxentropy on only one variable is equivalent to doing on two and then
 marginalize?
 
-Fit with propagation like `lsqfit` but at second order. Do a generic wrapper
-of a least squares procedure. Look at lsqfit for how to diagonalize the data
-covariance matrix efficiently because it is O(n^3), and I probably start with
-implicit block diagonal.
-
-Least squares with second order propagation as approximate bayesian inference?
-Check this empirically.
-
 Avoid code bloat by putting shared functionality in a superclass
 `UReal2Base<Real>` and then subclassing to `UReal2<Real, prop>`.
-
 
 ## Documentation
 
@@ -421,3 +409,19 @@ derivatives", and explain that default steps are ok under the condition
 
 The theoretical explanation for `UReal2` clutters the reference, move it to a
 separate page.
+
+## Least squares
+
+Fit with propagation like `lsqfit` but at second order. Do a generic wrapper
+of a least squares procedure. Look at `lsqfit` for how to diagonalize the data
+covariance matrix efficiently because it is O(n^3), and I probably start with
+implicit block diagonal.
+
+Least squares with second order propagation as approximate bayesian inference?
+Check this empirically.
+
+What happens if I transform the data to be normal before fitting?
+
+What happens if I fit both y and y^2, computing the covariance between them?
+At first order? At second order? The covariance can be optimized when the ys
+are indipendent because it is 2x2 block diagonal.

@@ -322,6 +322,9 @@ dependable than well-tested algorithms. Don't forget to check if it is actually
 faster to do a full diagonalization than using this! There will be a threshold
 on the matrix size. Also: should I use SVD?
 
+Caution when using both ends: it becomes very inefficient if the eigenvalues
+are close. A good bet is requesting largest magnitude eigenvalues.
+
 #### Numerical error
 
 For a O(n^2) computation, I guess the digits I lose are as many as the digits

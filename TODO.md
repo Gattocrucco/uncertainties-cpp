@@ -320,10 +320,16 @@ The algorithm I should use is Lanczos. C++ header only implementations I found:
 I guess I'll go with the second, mainly because what I write by hand is less
 dependable than well-tested algorithms. Don't forget to check if it is actually
 faster to do a full diagonalization than using this! There will be a threshold
-on the matrix size. Also: should I use SVD?
+on the matrix size.
 
 Caution when using both ends: it becomes very inefficient if the eigenvalues
 are close. A good bet is requesting largest magnitude eigenvalues.
+
+Alternative home-made algorithm: reorder rows and columns to have an hessian
+close to being tridiagonal. Compute a score for all indices based on diagonal
+and off-diagonal terms (a sum of the absolute values of the columns?), extract
+the first diagonal and diagonalize (it should be O(n^2) for tridiagonals if I
+recall correctly), then pick the eigenspaces as needed.
 
 #### Numerical error
 

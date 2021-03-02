@@ -136,6 +136,10 @@ Other alternative: use Eigen's sparse matrices. The problems are that the
 storage is not completely ordered, it is inefficient to grow one element at a
 time, and size must be specified.
 
+Probably just using compact sorted vectors is the better option. I should have
+gone for that instead of using trees. `gvar` does that. It's tipically still
+efficient even in the case of binary assignments.
+
 #### Autodiff programs I have thought about
 
 I found most of them on [autodiff.org](http://www.autodiff.org). I concluded
@@ -178,10 +182,10 @@ code here there's more than one can hope for.
     variables to compute the gradient (not good). Mentions the "Edge_pushing
     algorithm by Rober Gower" for backward full hessian, maybe look it up.
   
-  * **`CoDiPack`**: C++, jacobian, hessian, fw, bw, higher orders, well documented,
-    currently maintained. The most promising C++ self-contained up to now. But
-    it still has the problem that you have to do either context-dependent
-    taping or pass a function, and the gradient is dense.
+  * **`CoDiPack`**: C++, jacobian, hessian, fw, bw, higher orders, well
+    documented, currently maintained. The most promising C++ self-contained up
+    to now. But it still has the problem that you have to do either
+    context-dependent taping or pass a function, and the gradient is dense.
 
   * `CppAD`: C++, jacobian, hessian, fw, bw, sparsity. As usual tape/function
     behaviour, and seems less easy to use than CoDiPack, although it boasts

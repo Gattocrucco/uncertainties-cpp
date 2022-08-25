@@ -3,8 +3,8 @@
 
 <img src="doc/uncertainties-cpp-512.png" width="128px" height="128px"
 style="display: none;" />
-<img src="uncertainties-cpp-512.png"
-style="float: right; left-margin: 1em;" />
+<img src="uncertainties-cpp-512.png" srcset="uncertainties-cpp-512.png 100w"
+sizes="50px" style="float: right; left-margin: 1em;" />
 
 C++ header library for first- and second-order uncertainty propagation. More or
 less a port of the python packages
@@ -62,6 +62,15 @@ int main() {
 * First-order independent variables do not use the heap.
 
 Note: complex numbers are not supported.
+
+## Technical details
+
+The gradients and hessians are computed with forward propagation. They are
+always sparse, implemented with C++ maps (trees), and can be updated in-place.
+Ab-initio covariance matrices are not supported, variables with arbitrary given
+correlations can be created as a linear transformations of independent
+variables. This software is not appropriate for efficient numerical
+calculation, but won't hang catastrophically.
 
 ## Documentation
 

@@ -4,7 +4,7 @@
 <img src="doc/uncertainties-cpp-512.png" width="128px" height="128px"
 style="display: none;" />
 <img src="uncertainties-cpp-512.png"
-style="width: 256px; float: right; left-margin: 1em;" />
+style="float: right; left-margin: 1em;" />
 
 C++ header library for first- and second-order uncertainty propagation. More or
 less a port of the python packages

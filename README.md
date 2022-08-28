@@ -68,9 +68,9 @@ Note: complex numbers are not supported.
 The gradients and hessians are computed with forward propagation. They are
 always sparse, implemented with C++ maps (trees), and can be updated in-place.
 Ab-initio covariance matrices are not supported, variables with arbitrary given
-correlations can be created as a linear transformations of independent
-variables. This software is not appropriate for efficient numerical
-calculation, but won't hang catastrophically.
+correlations can be created as linear transformations of independent variables.
+This software is not appropriate for efficient numerical calculation, but won't
+hang catastrophically.
 
 ## Documentation
 
